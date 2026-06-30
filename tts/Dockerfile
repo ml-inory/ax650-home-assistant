@@ -7,7 +7,12 @@ ENV PYTHONUNBUFFERED=1 \
     AX_TTS_MODEL=kokoro \
     AX_TTS_LANGUAGE=zh \
     AX_TTS_VOICE=jm_kumo \
-    AX_TTS_MODEL_PATH=/models/tts
+    AX_TTS_MODEL_PATH=/models/tts \
+    AX_TTS_SERVER_BIN=/opt/ax_tts_api/install/ax650/tts_server \
+    AX_TTS_SERVER_PORT=8081 \
+    AX_TTS_ADAPTER_URI=tcp://0.0.0.0:10200 \
+    AX_TTS_WAIT_TIMEOUT=30 \
+    AX_TTS_ADAPTER_ONLY=0
 
 WORKDIR /app
 
@@ -16,6 +21,7 @@ RUN apt-get update \
         ca-certificates \
         cmake \
         build-essential \
+        curl \
         git \
         libatomic1 \
         libgomp1 \

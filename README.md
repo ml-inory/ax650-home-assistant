@@ -96,6 +96,28 @@ Defaults:
 - TTS: `kokoro`, language `zh`, voice `jm_kumo`
 - LLM: `AXERA-TECH/Qwen3-0.6B`, expected at `models/llm/Qwen3-0.6B`
 
+## Runtime Contract
+
+The ASR and TTS containers run two processes:
+
+1. the upstream AXERA HTTP server on localhost
+2. the Wyoming adapter exposed to Home Assistant
+
+Startup fails fast if the upstream server binary or model path is missing. Override paths and ports with environment variables:
+
+| Service | Variable | Default |
+| --- | --- | --- |
+| ASR | `AX_ASR_SERVER_BIN` | `/opt/ax_asr_api/install/ax650/asr_server` |
+| ASR | `AX_ASR_SERVER_PORT` | `8080` |
+| ASR | `AX_ASR_MODEL_PATH` | `/models/asr` |
+| ASR | `AX_ASR_ADAPTER_URI` | `tcp://0.0.0.0:10300` |
+| TTS | `AX_TTS_SERVER_BIN` | `/opt/ax_tts_api/install/ax650/tts_server` |
+| TTS | `AX_TTS_SERVER_PORT` | `8081` |
+| TTS | `AX_TTS_MODEL_PATH` | `/models/tts` |
+| TTS | `AX_TTS_ADAPTER_URI` | `tcp://0.0.0.0:10200` |
+
+For adapter-only debugging against an already running HTTP server, set `AX_ASR_ADAPTER_ONLY=1` or `AX_TTS_ADAPTER_ONLY=1` and point `AX_ASR_HTTP_URL` or `AX_TTS_HTTP_URL` at that server.
+
 ## Development Checks
 
 Install local test dependencies:

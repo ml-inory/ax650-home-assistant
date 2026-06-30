@@ -3,7 +3,7 @@
   "stack": "Python adapters plus Docker Compose",
   "base_branch": "main",
   "branch": "feat/build-20260630-1440",
-  "iteration": 1,
+  "iteration": 2,
   "validation_command": "python -m pytest -q && docker-compose config",
   "requirement_alignment": {
     "goal": "Create an AX650 implementation that preserves the Home Assistant integration experience from rk3576-home-assistant-voice: Wyoming STT on 10300, Wyoming TTS on 10200, openWakeWord on 10400, OpenAI-compatible LLM on 8001, and optional Home Assistant profile.",
@@ -53,6 +53,20 @@
         "Unit tests verify ASR/TTS adapter event conversion using fake HTTP clients.",
         "docker compose config succeeds.",
         "README documents AX650 setup, ports, model placement, and Home Assistant integration."
+      ]
+    },
+    {
+      "iteration": 2,
+      "number": 3,
+      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/3",
+      "title": "feat[2]: add AX runtime preflight and smoke checks",
+      "acceptance_checks": [
+        "ASR/TTS start scripts use configurable server binary, port, model path, API URL, and adapter URI environment variables.",
+        "Start scripts fail fast when the upstream server binary or model path is missing, unless adapter-only mode is explicitly enabled.",
+        "Start scripts wait for the upstream HTTP service before launching the Wyoming adapter.",
+        "Compose includes healthchecks for ASR, TTS, and LLM HTTP endpoints where applicable.",
+        "Local tests verify fail-fast, adapter-only, and successful startup command construction without requiring AX650 binaries.",
+        "README documents the runtime contract and adapter-only mode."
       ]
     }
   ],
@@ -107,6 +121,38 @@
       "test_summary": "Passed locally: pytest reported 6 passed; docker-compose config parsed all services. The Docker Compose plugin command docker compose config is unavailable in this environment.",
       "commit": "HEAD commit for iteration 1; final hash reported by git/PR",
       "commit_message": "feat(iter-1): scaffold AX650 Home Assistant voice stack (#1)"
+    },
+    {
+      "iteration": 2,
+      "issue_number": 3,
+      "changed_files": [
+        ".build-state.json",
+        "README.md",
+        "asr/Dockerfile",
+        "asr/start.sh",
+        "docker-compose.yml",
+        "tests/test_start_scripts.py",
+        "tts/Dockerfile",
+        "tts/start.sh"
+      ],
+      "implementation_summary": "Added ASR/TTS runtime preflight checks, adapter-only mode, HTTP readiness waits, compose healthchecks, and shell-level startup tests.",
+      "validation": [
+        {
+          "command": "python -m pytest -q",
+          "status": "passed",
+          "evidence": "10 passed, 1 warning"
+        },
+        {
+          "command": "docker-compose config",
+          "status": "passed",
+          "evidence": "Compose parsed ASR/TTS/LLM healthchecks and runtime environment."
+        }
+      ],
+      "test_status": "pass",
+      "test_command": "python -m pytest -q && docker-compose config",
+      "test_summary": "Passed locally: pytest reported 10 passed; docker-compose config parsed service healthchecks and runtime configuration.",
+      "commit": "HEAD commit for iteration 2; final hash reported by git/PR",
+      "commit_message": "feat(iter-2): add AX runtime preflight checks (#3)"
     }
   ],
   "pre_existing_changes": [

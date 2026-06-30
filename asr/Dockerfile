@@ -6,7 +6,12 @@ ENV PYTHONUNBUFFERED=1 \
     AX_ASR_HTTP_URL=http://127.0.0.1:8080 \
     AX_ASR_MODEL=sensevoice \
     AX_ASR_LANGUAGE=auto \
-    AX_ASR_MODEL_PATH=/models/asr
+    AX_ASR_MODEL_PATH=/models/asr \
+    AX_ASR_SERVER_BIN=/opt/ax_asr_api/install/ax650/asr_server \
+    AX_ASR_SERVER_PORT=8080 \
+    AX_ASR_ADAPTER_URI=tcp://0.0.0.0:10300 \
+    AX_ASR_WAIT_TIMEOUT=30 \
+    AX_ASR_ADAPTER_ONLY=0
 
 WORKDIR /app
 
@@ -15,6 +20,7 @@ RUN apt-get update \
         ca-certificates \
         cmake \
         build-essential \
+        curl \
         git \
         libatomic1 \
         libgomp1 \
