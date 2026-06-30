@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.pytest_cache/*
+*.pyc
+
+# Local model artifacts are large and board-specific.
+models/asr/*
+models/tts/*
+models/llm/*
+!models/asr/.gitkeep
+!models/tts/.gitkeep
+!models/llm/.gitkeep
+
+# Optional Home Assistant runtime data.
+homeassistant/config/
