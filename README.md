@@ -49,6 +49,12 @@ sudo docker compose ps
 sudo docker compose logs -f
 ```
 
+Run a service-surface smoke check from the machine that can reach the stack:
+
+```bash
+python scripts/smoke_check.py --host AX650_BOARD_IP
+```
+
 ## Services
 
 | Service | Purpose | Port |
@@ -132,6 +138,15 @@ Run validation:
 python -m pytest -q
 docker compose config
 ```
+
+Run smoke checks against a local or board-side stack:
+
+```bash
+python scripts/smoke_check.py --host 127.0.0.1
+python scripts/smoke_check.py --host AX650_BOARD_IP
+```
+
+The smoke check verifies ASR/TTS HTTP health endpoints, LLM HTTP health or model listing, and the three Wyoming TCP ports.
 
 ## Troubleshooting
 
