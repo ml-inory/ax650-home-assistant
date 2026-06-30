@@ -16,6 +16,15 @@ if [ ! -d "$AX_MSP_DIR/include" ] || [ ! -d "$AX_MSP_DIR/lib" ]; then
 fi
 
 cd "$AX_ASR_SOURCE_DIR"
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("cmake/msp_dependencies.cmake")
+text = path.read_text()
+for name in ("ax_sys", "ax_engine", "ax_interpreter", "ax_dmadim"):
+    text = text.replace(f"lib{name}.a", name)
+path.write_text(text)
+PY
 mkdir -p build_ax650_native
 cd build_ax650_native
 

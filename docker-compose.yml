@@ -3,6 +3,11 @@ services:
     build:
       context: .
       dockerfile: asr/Dockerfile
+      args:
+        BASE_IMAGE: ${PYTHON_BASE_IMAGE:-docker.m.daocloud.io/library/python:3.11-slim-bookworm}
+        APT_DEBIAN_MIRROR: ${APT_DEBIAN_MIRROR:-http://mirrors.ustc.edu.cn/debian}
+        APT_SECURITY_MIRROR: ${APT_SECURITY_MIRROR:-http://mirrors.ustc.edu.cn/debian-security}
+        AX_ASR_REPO: ${AX_ASR_REPO:-https://github.com/AXERA-TECH/ax_asr_api.git}
     restart: unless-stopped
     privileged: true
     ports:
@@ -37,6 +42,11 @@ services:
     build:
       context: .
       dockerfile: tts/Dockerfile
+      args:
+        BASE_IMAGE: ${PYTHON_BASE_IMAGE:-docker.m.daocloud.io/library/python:3.11-slim-bookworm}
+        APT_DEBIAN_MIRROR: ${APT_DEBIAN_MIRROR:-http://mirrors.ustc.edu.cn/debian}
+        APT_SECURITY_MIRROR: ${APT_SECURITY_MIRROR:-http://mirrors.ustc.edu.cn/debian-security}
+        AX_TTS_REPO: ${AX_TTS_REPO:-https://github.com/AXERA-TECH/ax_tts_api.git}
     restart: unless-stopped
     privileged: true
     ports:

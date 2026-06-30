@@ -12,5 +12,14 @@ models/llm/*
 !models/tts/.gitkeep
 !models/llm/.gitkeep
 
+# Optional upstream source caches for board builds.
+vendor/ax_asr_api/*
+vendor/ax_tts_api/*
+!vendor/.gitkeep
+!vendor/ax_asr_api/
+!vendor/ax_asr_api/.gitkeep
+!vendor/ax_tts_api/
+!vendor/ax_tts_api/.gitkeep
+
 # Optional Home Assistant runtime data.
 homeassistant/config/

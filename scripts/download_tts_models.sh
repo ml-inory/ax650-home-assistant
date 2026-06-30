@@ -3,11 +3,12 @@ set -eu
 
 TARGET_DIR="${1:-models/tts}"
 HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
+PYTHON="${PYTHON:-python3}"
 
 mkdir -p "$TARGET_DIR/kokoro"
 export HF_ENDPOINT
 
-python -m pip install -U huggingface_hub
+"$PYTHON" -m pip install -U huggingface_hub
 hf download AXERA-TECH/kokoro.axera models/kokoro_part1_96.axmodel --local-dir "$TARGET_DIR/kokoro"
 hf download AXERA-TECH/kokoro.axera models/kokoro_part2_96.axmodel --local-dir "$TARGET_DIR/kokoro"
 hf download AXERA-TECH/kokoro.axera models/kokoro_part3_96.axmodel --local-dir "$TARGET_DIR/kokoro"

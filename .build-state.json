@@ -3,7 +3,7 @@
   "stack": "Python adapters plus Docker Compose and AXERA C++ server wrappers",
   "base_branch": "main",
   "branch": "feat/build-20260630-board-validation",
-  "iteration": 1,
+  "iteration": 2,
   "validation_command": "python -m pytest -q && docker-compose config",
   "requirement_alignment": {
     "goal": "Continue after merged PR #5 until AX650 board validation succeeds or the next concrete runtime blocker is fixed and documented.",
@@ -42,6 +42,20 @@
         "TTS optional espeak and jieba arguments are supported.",
         "Local tests pass.",
         "Board-side adapter smoke check passes or next blocker is reported."
+      ]
+    },
+    {
+      "iteration": 2,
+      "number": 8,
+      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/8",
+      "title": "fix[2]: make AX650 board Docker builds reproducible",
+      "acceptance_checks": [
+        "ASR/TTS Dockerfiles allow mirrorable base image and apt sources.",
+        "Board builds can use local vendor source caches instead of cloning GitHub inside the container.",
+        "ASR and TTS images build on AX650N.",
+        "ASR and TTS upstream server build scripts compile and install asr_server and tts_server against /soc.",
+        "Local pytest and compose config pass.",
+        "Board pytest, compose config, and adapter smoke checks pass; model-asset blockers remain explicit."
       ]
     }
   ],
@@ -94,6 +108,75 @@
       "test_summary": "Local validation passed; board-side adapter smoke validation passed. Full Docker image build is blocked by Docker Hub connectivity from the board, and real inference still needs model assets/upstream server binaries.",
       "commit": "HEAD commit for iteration 1; final hash reported by git/PR",
       "commit_message": "fix(iter-1): build AX servers during container startup (#6)"
+    },
+    {
+      "iteration": 2,
+      "issue_number": 8,
+      "changed_files": [
+        ".build-state.json",
+        ".gitignore",
+        "asr/Dockerfile",
+        "asr/build_server.sh",
+        "docker-compose.yml",
+        "pytest.ini",
+        "scripts/download_asr_models.sh",
+        "scripts/download_llm_models.sh",
+        "scripts/download_tts_models.sh",
+        "scripts/fetch_upstream_sources.sh",
+        "tts/Dockerfile",
+        "tts/build_server.sh",
+        "vendor/.gitkeep",
+        "vendor/ax_asr_api/.gitkeep",
+        "vendor/ax_tts_api/.gitkeep"
+      ],
+      "implementation_summary": "Added mirrorable ASR/TTS Docker build args, optional local upstream source caches, pytest testpath scoping, Python-selectable model download scripts, and AX650-native upstream build patches required by /soc libs.",
+      "validation": [
+        {
+          "command": "python -m pytest -q",
+          "status": "passed",
+          "evidence": "14 passed, 1 warning"
+        },
+        {
+          "command": "docker-compose config",
+          "status": "passed",
+          "evidence": "Compose parsed successfully with mirrored ASR/TTS build args"
+        },
+        {
+          "command": "board docker compose build asr && docker compose build tts",
+          "status": "passed",
+          "evidence": "ASR and TTS images rebuilt on AX650N 10.126.35.158 using DaoCloud Python base, USTC apt mirror, and local vendor source caches without nested .git directories; final context sizes were about 15MB for ASR and 169MB for TTS."
+        },
+        {
+          "command": "board docker compose run --rm --entrypoint /app/build_server.sh asr",
+          "status": "passed",
+          "evidence": "Built and installed /opt/ax_asr_api/install/ax650/asr_server against /soc"
+        },
+        {
+          "command": "board docker compose run --rm --entrypoint /app/build_server.sh tts",
+          "status": "passed",
+          "evidence": "Built and installed /opt/ax_tts_api/install/ax650/tts_server against /soc"
+        },
+        {
+          "command": "board python3 -m pytest -q && docker compose config",
+          "status": "passed",
+          "evidence": "14 passed on AX650N 10.126.35.158; compose config generated successfully"
+        },
+        {
+          "command": "board python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3",
+          "status": "passed_adapter_validation",
+          "evidence": "PASS for ASR/TTS/LLM HTTP surfaces and ASR/TTS/wakeword Wyoming TCP ports using fake upstream services plus real ASR/TTS adapters"
+        },
+        {
+          "command": "board find models -maxdepth 4 -type f; du -sh models/asr models/tts models/llm",
+          "status": "blocked_external_assets_for_real_inference",
+          "evidence": "models/asr, models/tts, and models/llm contain only .gitkeep files on the board, so full real inference cannot start until model assets are downloaded or provided"
+        }
+      ],
+      "test_status": "pass_with_external_asset_blocker",
+      "test_command": "python -m pytest -q && docker-compose config; board Docker builds/build_server scripts/pytest/compose/smoke_check",
+      "test_summary": "Local and board validations passed through ASR/TTS image build, native server compilation, and adapter smoke checks. Full real model inference remains blocked only by absent model artifacts under models/.",
+      "commit": "pending",
+      "commit_message": "fix(iter-2): make AX650 Docker builds reproducible (#8)"
     }
   ],
   "selected_board": {
@@ -108,6 +191,8 @@
   "assumptions": [
     "Password authentication with the approved default password was used via sshpass.",
     "Remote work was kept under /tmp/ax650-home-assistant-20260630-150749-272f885.",
-    "AGENTS.md and plan.md are pre-existing local files and are not staged."
+    "AGENTS.md and plan.md are pre-existing local files and are not staged.",
+    "Vendor source caches under vendor/ax_asr_api and vendor/ax_tts_api are local ignored build inputs; only .gitkeep placeholders are committed.",
+    "Full real inference validation requires model artifacts that are not present on the selected board."
   ]
 }

@@ -1,4 +1,8 @@
-FROM python:3.11-slim-bookworm
+ARG BASE_IMAGE=python:3.11-slim-bookworm
+FROM ${BASE_IMAGE}
+ARG APT_DEBIAN_MIRROR=
+ARG APT_SECURITY_MIRROR=
+ARG AX_TTS_REPO=https://github.com/AXERA-TECH/ax_tts_api.git
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -16,7 +20,13 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-RUN apt-get update \
+RUN if [ -n "$APT_DEBIAN_MIRROR" ]; then \
+        sed -i "s|http://deb.debian.org/debian-security|${APT_SECURITY_MIRROR:-$APT_DEBIAN_MIRROR}|g; s|http://deb.debian.org/debian|$APT_DEBIAN_MIRROR|g" /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources 2>/dev/null || true; \
+    fi \
+    && if [ -n "$APT_SECURITY_MIRROR" ]; then \
+        sed -i "s|http://deb.debian.org/debian-security|$APT_SECURITY_MIRROR|g" /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources 2>/dev/null || true; \
+    fi \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         cmake \
@@ -34,7 +44,13 @@ RUN python -m pip install --upgrade pip \
 
 # Board validation must confirm the exact AX650 runtime/BSP layout. This
 # scaffold follows AXERA-TECH/ax_tts_api's documented AX650 build entrypoint.
-RUN git clone --depth=1 https://github.com/AXERA-TECH/ax_tts_api.git /opt/ax_tts_api
+COPY vendor/ax_tts_api /tmp/vendor/ax_tts_api
+RUN if [ -f /tmp/vendor/ax_tts_api/CMakeLists.txt ]; then \
+        cp -a /tmp/vendor/ax_tts_api /opt/ax_tts_api; \
+    else \
+        git clone --depth=1 "$AX_TTS_REPO" /opt/ax_tts_api; \
+    fi \
+    && rm -rf /tmp/vendor
 
 COPY tts/wyoming_adapter.py /app/wyoming_adapter.py
 COPY tts/start.sh /app/start.sh
