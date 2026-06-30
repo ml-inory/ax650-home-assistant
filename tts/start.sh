@@ -11,6 +11,10 @@ set -eu
 : "${AX_TTS_ADAPTER_URI:=tcp://0.0.0.0:10200}"
 : "${AX_TTS_WAIT_TIMEOUT:=30}"
 : "${AX_TTS_ADAPTER_ONLY:=0}"
+: "${AX_TTS_BUILD_IF_MISSING:=1}"
+: "${AX_TTS_BUILD_SCRIPT:=/app/build_server.sh}"
+: "${AX_TTS_ESPEAK_DATA_PATH:=}"
+: "${AX_TTS_JIEBA_DICT_PATH:=}"
 
 wait_for_http() {
   url="$1"
@@ -28,6 +32,10 @@ wait_for_http() {
 }
 
 if [ "$AX_TTS_ADAPTER_ONLY" != "1" ]; then
+  if [ ! -x "$AX_TTS_SERVER_BIN" ] && [ "$AX_TTS_BUILD_IF_MISSING" = "1" ]; then
+    "$AX_TTS_BUILD_SCRIPT"
+  fi
+
   if [ ! -x "$AX_TTS_SERVER_BIN" ]; then
     echo "TTS server binary not executable: $AX_TTS_SERVER_BIN" >&2
     echo "Set AX_TTS_SERVER_BIN or build/download AXERA-TECH/ax_tts_api for AX650." >&2
@@ -39,9 +47,14 @@ if [ "$AX_TTS_ADAPTER_ONLY" != "1" ]; then
     exit 1
   fi
 
-  "$AX_TTS_SERVER_BIN" \
-    --port "$AX_TTS_SERVER_PORT" \
-    --model_path "$AX_TTS_MODEL_PATH" &
+  set -- "$AX_TTS_SERVER_BIN" --port "$AX_TTS_SERVER_PORT" --model_path "$AX_TTS_MODEL_PATH"
+  if [ -n "$AX_TTS_ESPEAK_DATA_PATH" ]; then
+    set -- "$@" --espeak_data_path "$AX_TTS_ESPEAK_DATA_PATH"
+  fi
+  if [ -n "$AX_TTS_JIEBA_DICT_PATH" ]; then
+    set -- "$@" --jieba_dict_path "$AX_TTS_JIEBA_DICT_PATH"
+  fi
+  "$@" &
   server_pid=$!
   trap 'kill "$server_pid" 2>/dev/null || true' EXIT INT TERM
   wait_for_http "${AX_TTS_HTTP_URL%/}/healthz" "$AX_TTS_WAIT_TIMEOUT"

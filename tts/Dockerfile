@@ -38,7 +38,8 @@ RUN git clone --depth=1 https://github.com/AXERA-TECH/ax_tts_api.git /opt/ax_tts
 
 COPY tts/wyoming_adapter.py /app/wyoming_adapter.py
 COPY tts/start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+COPY tts/build_server.sh /app/build_server.sh
+RUN chmod +x /app/start.sh /app/build_server.sh
 
 EXPOSE 10200
 

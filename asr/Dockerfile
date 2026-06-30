@@ -37,7 +37,8 @@ RUN git clone --depth=1 https://github.com/AXERA-TECH/ax_asr_api.git /opt/ax_asr
 
 COPY asr/wyoming_adapter.py /app/wyoming_adapter.py
 COPY asr/start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+COPY asr/build_server.sh /app/build_server.sh
+RUN chmod +x /app/start.sh /app/build_server.sh
 
 EXPOSE 10300
 

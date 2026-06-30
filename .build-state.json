@@ -1,72 +1,72 @@
 {
-  "goal": "Continue replicating rk3576-home-assistant-voice for AX650 board-side Docker by adding practical validation tooling for the scaffold merged in PR #2.",
-  "stack": "Python adapters plus Docker Compose",
+  "goal": "Validate the AX650 Home Assistant voice stack on an AX650 board and fix blockers discovered during board validation.",
+  "stack": "Python adapters plus Docker Compose and AXERA C++ server wrappers",
   "base_branch": "main",
-  "branch": "feat/build-20260630-1500",
+  "branch": "feat/build-20260630-board-validation",
   "iteration": 1,
   "validation_command": "python -m pytest -q && docker-compose config",
   "requirement_alignment": {
-    "goal": "Advance the AX650 Home Assistant voice stack after PR #2 by adding focused, reviewable tooling that improves board-side validation readiness without deploying or publishing anything.",
+    "goal": "Continue after merged PR #5 until AX650 board validation succeeds or the next concrete runtime blocker is fixed and documented.",
     "non_goals": [
-      "Do not run deployment or production operations.",
+      "Do not overwrite unrelated board paths.",
       "Do not commit model artifacts.",
-      "Do not merge the PR automatically.",
-      "Do not perform AX650 board-side execution unless explicitly requested."
+      "Do not merge PRs automatically."
     ],
     "expected_behavior": [
-      "Repository keeps the same Home Assistant-facing service contract.",
-      "New validation tooling should run locally against fake endpoints and later against an AX650 board by changing host/port flags."
+      "ASR/TTS containers can build or locate upstream AXERA server binaries instead of failing immediately after clone.",
+      "Board-side smoke checks can run against fake upstream services and real Wyoming adapters."
     ],
     "constraints_and_risks": [
-      "Local checks cannot prove real AX650 inference works.",
-      "The machine still lacks Docker Compose plugin; use docker-compose config for local parse validation."
+      "Docker Hub access from the board currently resets connections when pulling python:3.11-slim-bookworm.",
+      "Real ASR/TTS/LLM model inference still requires model assets and upstream server binaries."
     ],
     "acceptance_checks": [
-      "Each iteration is represented by a GitHub issue.",
-      "Local pytest coverage validates any new behavior.",
-      "docker-compose config continues to pass.",
-      "Untracked AGENTS.md and plan.md are preserved and not staged."
+      "Local pytest and docker-compose config pass.",
+      "Board-side pytest and docker compose config pass.",
+      "Board-side smoke_check reports PASS for ASR/TTS/LLM HTTP surfaces and Wyoming TCP ports in adapter validation mode.",
+      "Remaining full-inference blockers are explicit."
     ],
-    "validation_approach": "Run python -m pytest -q and docker-compose config locally.",
-    "first_iteration_scope": "Add a local smoke-check script for ASR/TTS/LLM HTTP endpoints and Wyoming TCP ports, with tests using fake local servers.",
-    "likely_follow_up_iterations": [
-      "Use remote-infer to run smoke checks on an AX650 board when requested.",
-      "Replace or augment runtime scaffolds with confirmed prebuilt artifacts after board validation."
-    ],
+    "validation_approach": "Run local tests, board-side tests, board-side compose config, and board-side smoke_check on AX650N 10.126.35.158.",
+    "first_iteration_scope": "Add runtime build scripts for ASR/TTS server binaries, optional TTS server arguments, fake upstream services for board validation, and tests for build-on-missing behavior.",
     "open_questions": []
   },
   "issues": [
     {
       "iteration": 1,
-      "number": 4,
-      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/4",
-      "title": "feat[1]: add local service smoke checks",
+      "number": 6,
+      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/6",
+      "title": "fix[1]: build AXERA ASR/TTS servers in AX650 containers",
       "acceptance_checks": [
-        "A script checks ASR /healthz, TTS /healthz, LLM /health or /v1/models, and Wyoming TCP ports.",
-        "The script accepts host/port flags so it can run against localhost, compose networking, or a board IP.",
-        "The script has clear pass/fail output and non-zero exit on failed required checks.",
-        "Tests cover success and failure paths with fake local HTTP/TCP servers.",
-        "README documents how to run the smoke check locally and against AX650.",
-        "Existing pytest and docker-compose config validation pass."
+        "ASR/TTS build scripts exist and are wired into Dockerfiles/start scripts.",
+        "/soc is mounted for AX MSP headers/libs.",
+        "TTS optional espeak and jieba arguments are supported.",
+        "Local tests pass.",
+        "Board-side adapter smoke check passes or next blocker is reported."
       ]
     }
   ],
   "rounds": [
     {
       "iteration": 1,
-      "issue_number": 4,
+      "issue_number": 6,
       "changed_files": [
         ".build-state.json",
-        "README.md",
-        "scripts/smoke_check.py",
-        "tests/test_smoke_check.py"
+        "asr/Dockerfile",
+        "asr/build_server.sh",
+        "asr/start.sh",
+        "docker-compose.yml",
+        "scripts/fake_services.py",
+        "tests/test_start_scripts.py",
+        "tts/Dockerfile",
+        "tts/build_server.sh",
+        "tts/start.sh"
       ],
-      "implementation_summary": "Added a standard-library smoke checker for ASR/TTS/LLM HTTP endpoints and Wyoming TCP ports, plus fake-server tests and README usage.",
+      "implementation_summary": "Added ASR/TTS runtime build scripts, build-if-missing startup behavior, /soc mounts, TTS optional server paths, fake upstream services, and tests for build-on-missing behavior.",
       "validation": [
         {
           "command": "python -m pytest -q",
           "status": "passed",
-          "evidence": "13 passed, 1 warning"
+          "evidence": "14 passed, 1 warning"
         },
         {
           "command": "docker-compose config",
@@ -74,29 +74,40 @@
           "evidence": "Compose parsed successfully"
         },
         {
-          "command": "python scripts/smoke_check.py --host 127.0.0.1 --timeout 0.01",
-          "status": "expected_fail_no_services",
-          "evidence": "Returned non-zero with explicit FAIL lines for stopped local services"
+          "command": "board python3 -m pytest -q && docker compose config",
+          "status": "passed",
+          "evidence": "14 passed on AX650N 10.126.35.158 after patch transfer"
+        },
+        {
+          "command": "board python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 2",
+          "status": "passed_adapter_validation",
+          "evidence": "All ASR/TTS/LLM HTTP and Wyoming TCP checks PASS using fake upstream HTTP services plus real ASR/TTS Wyoming adapters"
+        },
+        {
+          "command": "board docker compose build asr",
+          "status": "blocked_external_network",
+          "evidence": "Docker Hub metadata request for python:3.11-slim-bookworm reset by peer"
         }
       ],
-      "test_status": "pass",
+      "test_status": "pass_with_runtime_blocker",
       "test_command": "python -m pytest -q && docker-compose config",
-      "test_summary": "Passed locally: pytest reported 13 passed; docker-compose config parsed successfully. Smoke checker failure behavior was manually exercised against stopped localhost services.",
+      "test_summary": "Local validation passed; board-side adapter smoke validation passed. Full Docker image build is blocked by Docker Hub connectivity from the board, and real inference still needs model assets/upstream server binaries.",
       "commit": "HEAD commit for iteration 1; final hash reported by git/PR",
-      "commit_message": "feat(iter-1): add service smoke checks (#4)"
+      "commit_message": "fix(iter-1): build AX servers during container startup (#6)"
     }
   ],
+  "selected_board": {
+    "ip": "10.126.35.158",
+    "hostname": "ax650",
+    "chip_type": "AX650N_CHIP"
+  },
   "pre_existing_changes": [
     "?? AGENTS.md",
     "?? plan.md"
   ],
   "assumptions": [
-    "The target PR base branch is main.",
-    "GitHub CLI authentication is available for issues and PR creation.",
-    "AGENTS.md and plan.md are pre-existing local files and will not be staged unless explicitly needed."
-  ],
-  "pull_request": {
-    "url": "https://github.com/ml-inory/ax650-home-assistant/pull/5",
-    "merged": false
-  }
+    "Password authentication with the approved default password was used via sshpass.",
+    "Remote work was kept under /tmp/ax650-home-assistant-20260630-150749-272f885.",
+    "AGENTS.md and plan.md are pre-existing local files and are not staged."
+  ]
 }
