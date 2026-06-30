@@ -3,7 +3,7 @@
   "stack": "Python adapters plus Docker Compose and AXERA C++ server wrappers",
   "base_branch": "main",
   "branch": "feat/build-20260630-board-validation",
-  "iteration": 2,
+  "iteration": 3,
   "validation_command": "python -m pytest -q && docker-compose config",
   "requirement_alignment": {
     "goal": "Continue after merged PR #5 until AX650 board validation succeeds or the next concrete runtime blocker is fixed and documented.",
@@ -56,6 +56,18 @@
         "ASR and TTS upstream server build scripts compile and install asr_server and tts_server against /soc.",
         "Local pytest and compose config pass.",
         "Board pytest, compose config, and adapter smoke checks pass; model-asset blockers remain explicit."
+      ]
+    },
+    {
+      "iteration": 3,
+      "number": 9,
+      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/9",
+      "title": "fix[3]: harden AX runtime startup on board",
+      "acceptance_checks": [
+        "ASR/TTS startup scripts include /soc/lib and the installed server lib directory in LD_LIBRARY_PATH before starting AX server binaries.",
+        "ASR/TTS containers wait long enough for first-start server compilation and model initialization on the board.",
+        "Local pytest and compose config pass.",
+        "AX650 board ASR real model validation succeeds with a transcription response."
       ]
     }
   ],
@@ -175,8 +187,58 @@
       "test_status": "pass_with_external_asset_blocker",
       "test_command": "python -m pytest -q && docker-compose config; board Docker builds/build_server scripts/pytest/compose/smoke_check",
       "test_summary": "Local and board validations passed through ASR/TTS image build, native server compilation, and adapter smoke checks. Full real model inference remains blocked only by absent model artifacts under models/.",
-      "commit": "pending",
+      "commit": "bf287f4",
       "commit_message": "fix(iter-2): make AX650 Docker builds reproducible (#8)"
+    },
+    {
+      "iteration": 3,
+      "issue_number": 9,
+      "changed_files": [
+        ".build-state.json",
+        "asr/Dockerfile",
+        "asr/start.sh",
+        "docker-compose.yml",
+        "tts/Dockerfile",
+        "tts/start.sh"
+      ],
+      "implementation_summary": "Added /soc and installed AX server library directories to ASR/TTS runtime LD_LIBRARY_PATH and increased ASR/TTS wait timeouts so first board startup can compile and initialize real services.",
+      "validation": [
+        {
+          "command": "board docker compose up -d --build asr && docker compose ps asr",
+          "status": "passed",
+          "evidence": "ASR container on AX650N 10.126.35.158 reached Up/healthy with the real sensevoice model."
+        },
+        {
+          "command": "board docker compose exec -T asr curl -fsS http://127.0.0.1:8080/healthz",
+          "status": "passed",
+          "evidence": "{\"auth_enabled\":false,\"status\":\"ok\"}"
+        },
+        {
+          "command": "board docker compose exec -T asr curl -fsS http://127.0.0.1:8080/v1/models",
+          "status": "passed",
+          "evidence": "ASR server returned its model list."
+        },
+        {
+          "command": "board docker compose exec -T asr curl -fsS http://127.0.0.1:8080/v1/audio/transcriptions -F file=@/opt/ax_asr_api/demo.wav -F model=sensevoice -F language=zh -F response_format=json",
+          "status": "passed",
+          "evidence": "{\"text\":\"甚至出现交易几乎停滞的情况。\"}"
+        },
+        {
+          "command": "python -m pytest -q",
+          "status": "passed",
+          "evidence": "14 passed, 1 warning"
+        },
+        {
+          "command": "docker-compose config",
+          "status": "passed",
+          "evidence": "Compose parsed successfully with 300s ASR/TTS wait timeout settings."
+        }
+      ],
+      "test_status": "pass",
+      "test_command": "python -m pytest -q && docker-compose config",
+      "test_summary": "Local validation passed and board ASR real inference returned a Chinese transcription from the sensevoice model.",
+      "commit": "pending",
+      "commit_message": "fix(iter-3): harden AX runtime startup on board (#9)"
     }
   ],
   "selected_board": {
@@ -190,9 +252,9 @@
   ],
   "assumptions": [
     "Password authentication with the approved default password was used via sshpass.",
-    "Remote work was kept under /tmp/ax650-home-assistant-20260630-150749-272f885.",
+    "Remote work was moved from /tmp to /root/ax650-home-assistant-board-validation because /tmp is tmpfs and filled during model download.",
     "AGENTS.md and plan.md are pre-existing local files and are not staged.",
     "Vendor source caches under vendor/ax_asr_api and vendor/ax_tts_api are local ignored build inputs; only .gitkeep placeholders are committed.",
-    "Full real inference validation requires model artifacts that are not present on the selected board."
+    "ASR real inference is validated with the sensevoice model; TTS, wakeword, and LLM real service validation are still in progress."
   ]
 }

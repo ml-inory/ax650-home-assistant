@@ -15,6 +15,7 @@ set -eu
 : "${AX_TTS_BUILD_SCRIPT:=/app/build_server.sh}"
 : "${AX_TTS_ESPEAK_DATA_PATH:=}"
 : "${AX_TTS_JIEBA_DICT_PATH:=}"
+: "${AX_MSP_DIR:=/soc}"
 
 wait_for_http() {
   url="$1"
@@ -47,6 +48,7 @@ if [ "$AX_TTS_ADAPTER_ONLY" != "1" ]; then
     exit 1
   fi
 
+  export LD_LIBRARY_PATH="${AX_MSP_DIR}/lib:$(dirname "$AX_TTS_SERVER_BIN")/lib:${LD_LIBRARY_PATH:-}"
   set -- "$AX_TTS_SERVER_BIN" --port "$AX_TTS_SERVER_PORT" --model_path "$AX_TTS_MODEL_PATH"
   if [ -n "$AX_TTS_ESPEAK_DATA_PATH" ]; then
     set -- "$@" --espeak_data_path "$AX_TTS_ESPEAK_DATA_PATH"

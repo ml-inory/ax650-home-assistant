@@ -12,6 +12,7 @@ set -eu
 : "${AX_ASR_ADAPTER_ONLY:=0}"
 : "${AX_ASR_BUILD_IF_MISSING:=1}"
 : "${AX_ASR_BUILD_SCRIPT:=/app/build_server.sh}"
+: "${AX_MSP_DIR:=/soc}"
 
 wait_for_http() {
   url="$1"
@@ -44,6 +45,7 @@ if [ "$AX_ASR_ADAPTER_ONLY" != "1" ]; then
     exit 1
   fi
 
+  export LD_LIBRARY_PATH="${AX_MSP_DIR}/lib:$(dirname "$AX_ASR_SERVER_BIN")/lib:${LD_LIBRARY_PATH:-}"
   "$AX_ASR_SERVER_BIN" \
     --port "$AX_ASR_SERVER_PORT" \
     --model_path "$AX_ASR_MODEL_PATH" &
