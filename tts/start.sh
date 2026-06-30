@@ -7,7 +7,7 @@ set -eu
 : "${AX_TTS_HTTP_URL:=http://127.0.0.1:${AX_TTS_SERVER_PORT}}"
 : "${AX_TTS_MODEL:=kokoro}"
 : "${AX_TTS_LANGUAGE:=zh}"
-: "${AX_TTS_VOICE:=jm_kumo}"
+: "${AX_TTS_VOICE:=zf_xiaoxiao}"
 : "${AX_TTS_ADAPTER_URI:=tcp://0.0.0.0:10200}"
 : "${AX_TTS_WAIT_TIMEOUT:=30}"
 : "${AX_TTS_ADAPTER_ONLY:=0}"
@@ -17,18 +17,32 @@ set -eu
 : "${AX_TTS_JIEBA_DICT_PATH:=}"
 : "${AX_MSP_DIR:=/soc}"
 
-wait_for_http() {
-  url="$1"
-  timeout="$2"
+wait_for_tcp() {
+  host="$1"
+  port="$2"
+  timeout="$3"
   elapsed=0
   while [ "$elapsed" -lt "$timeout" ]; do
-    if curl -fsS "$url" >/dev/null 2>&1; then
+    if python - "$host" "$port" <<'PY'
+import socket
+import sys
+
+host = sys.argv[1]
+port = int(sys.argv[2])
+sock = socket.socket()
+sock.settimeout(1)
+try:
+    sock.connect((host, port))
+finally:
+    sock.close()
+PY
+    then
       return 0
     fi
     sleep 1
     elapsed=$((elapsed + 1))
   done
-  echo "Timed out waiting for $url after ${timeout}s" >&2
+  echo "Timed out waiting for ${host}:${port} after ${timeout}s" >&2
   return 1
 }
 
@@ -59,7 +73,7 @@ if [ "$AX_TTS_ADAPTER_ONLY" != "1" ]; then
   "$@" &
   server_pid=$!
   trap 'kill "$server_pid" 2>/dev/null || true' EXIT INT TERM
-  wait_for_http "${AX_TTS_HTTP_URL%/}/healthz" "$AX_TTS_WAIT_TIMEOUT"
+  wait_for_tcp "127.0.0.1" "$AX_TTS_SERVER_PORT" "$AX_TTS_WAIT_TIMEOUT"
 fi
 
 exec python /app/wyoming_adapter.py \

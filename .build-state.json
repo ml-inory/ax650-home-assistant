@@ -3,7 +3,7 @@
   "stack": "Python adapters plus Docker Compose and AXERA C++ server wrappers",
   "base_branch": "main",
   "branch": "feat/build-20260630-board-validation",
-  "iteration": 3,
+  "iteration": 4,
   "validation_command": "python -m pytest -q && docker-compose config",
   "requirement_alignment": {
     "goal": "Continue after merged PR #5 until AX650 board validation succeeds or the next concrete runtime blocker is fixed and documented.",
@@ -68,6 +68,19 @@
         "ASR/TTS containers wait long enough for first-start server compilation and model initialization on the board.",
         "Local pytest and compose config pass.",
         "AX650 board ASR real model validation succeeds with a transcription response."
+      ]
+    },
+    {
+      "iteration": 4,
+      "number": 10,
+      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/10",
+      "title": "fix[4]: complete TTS model assets and readiness",
+      "acceptance_checks": [
+        "TTS model download script installs kokoro axmodels, vocab.txt, and voices/*.bin under models/tts/kokoro.",
+        "TTS startup waits for the upstream server TCP port instead of a nonexistent /healthz endpoint.",
+        "Default Chinese TTS voice matches upstream server defaults/assets.",
+        "Local pytest and compose config pass.",
+        "AX650 board TTS real speech request returns a WAV file and Wyoming port becomes reachable."
       ]
     }
   ],
@@ -237,8 +250,59 @@
       "test_status": "pass",
       "test_command": "python -m pytest -q && docker-compose config",
       "test_summary": "Local validation passed and board ASR real inference returned a Chinese transcription from the sensevoice model.",
-      "commit": "pending",
+      "commit": "13b3580",
       "commit_message": "fix(iter-3): harden AX runtime startup on board (#9)"
+    },
+    {
+      "iteration": 4,
+      "issue_number": 10,
+      "changed_files": [
+        ".build-state.json",
+        "docker-compose.yml",
+        "scripts/download_tts_models.sh",
+        "tests/test_start_scripts.py",
+        "tests/test_tts_adapter.py",
+        "tts/start.sh",
+        "tts/wyoming_adapter.py"
+      ],
+      "implementation_summary": "Completed kokoro TTS model asset download, switched TTS startup readiness to the upstream server TCP port, and changed the default Chinese voice to zf_xiaoxiao.",
+      "validation": [
+        {
+          "command": "python -m pytest -q",
+          "status": "passed",
+          "evidence": "14 passed, 1 warning"
+        },
+        {
+          "command": "docker-compose config",
+          "status": "passed",
+          "evidence": "Compose parsed successfully with TTS voice zf_xiaoxiao."
+        },
+        {
+          "command": "board HF_ENDPOINT=https://hf-mirror.com hf download AXERA-TECH/kokoro.axera --include cpp/dict/vocab.txt --include cpp/voices/*.bin",
+          "status": "passed",
+          "evidence": "Downloaded 55 kokoro asset files; models/tts/kokoro/vocab.txt and voices/zf_xiaoxiao.bin are present."
+        },
+        {
+          "command": "board docker compose up -d --build tts && docker compose ps tts",
+          "status": "passed",
+          "evidence": "TTS container on AX650N 10.126.35.158 reached Up/healthy and published tcp://127.0.0.1:10200."
+        },
+        {
+          "command": "board docker compose exec -T tts curl -fsS -o /tmp/out.wav -H 'Content-Type: application/json' -d '{...}' http://127.0.0.1:8081/v1/audio/speech",
+          "status": "passed",
+          "evidence": "Real TTS request returned /tmp/out.wav, 23K, using kokoro zh voice zf_xiaoxiao."
+        },
+        {
+          "command": "board python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3",
+          "status": "partial_expected_failure",
+          "evidence": "PASS for ASR Wyoming 10300 and TTS Wyoming 10200. Host-side ASR/TTS HTTP checks fail because compose exposes only Wyoming ports; wakeword and LLM are not started yet."
+        }
+      ],
+      "test_status": "pass_with_remaining_services",
+      "test_command": "python -m pytest -q && docker-compose config; board TTS real speech and Wyoming TCP checks",
+      "test_summary": "Local validation passed and board real TTS speech generation returned a WAV file; ASR/TTS Wyoming ports are reachable. Wakeword and LLM real validation remain.",
+      "commit": "pending",
+      "commit_message": "fix(iter-4): complete TTS model assets and readiness (#10)"
     }
   ],
   "selected_board": {
@@ -255,6 +319,6 @@
     "Remote work was moved from /tmp to /root/ax650-home-assistant-board-validation because /tmp is tmpfs and filled during model download.",
     "AGENTS.md and plan.md are pre-existing local files and are not staged.",
     "Vendor source caches under vendor/ax_asr_api and vendor/ax_tts_api are local ignored build inputs; only .gitkeep placeholders are committed.",
-    "ASR real inference is validated with the sensevoice model; TTS, wakeword, and LLM real service validation are still in progress."
+    "ASR real inference and TTS real speech generation are validated; wakeword and LLM real service validation are still in progress."
   ]
 }

@@ -31,7 +31,7 @@ def make_fake_path(tmp_path: Path) -> Path:
     bin_dir.mkdir()
     write_executable(
         bin_dir / "python",
-        "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$PYTHON_ARGS_FILE\"\nexit 0\n",
+        "#!/bin/sh\nif [ \"$1\" = \"-\" ]; then exit 0; fi\nprintf '%s\\n' \"$@\" > \"$PYTHON_ARGS_FILE\"\nexit 0\n",
     )
     write_executable(bin_dir / "curl", "#!/bin/sh\nexit 0\n")
     return bin_dir
