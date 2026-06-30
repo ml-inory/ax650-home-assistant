@@ -1,503 +1,125 @@
 {
-  "goal": "Validate the AX650 Home Assistant voice stack on an AX650 board and fix blockers discovered during board validation.",
-  "stack": "Python adapters plus Docker Compose and AXERA C++ server wrappers",
+  "goal": "Write bilingual README files and add a one-click AX650 board installation script.",
+  "stack": "Python adapters plus Docker Compose and POSIX shell board tooling",
   "base_branch": "main",
-  "branch": "feat/build-20260630-board-validation",
-  "iteration": 7,
-  "validation_command": "python -m pytest -q && docker-compose config",
+  "branch": "feat/build-20260630-readme-install",
+  "iteration": 1,
+  "validation_command": "python -m pytest -q && docker-compose config && sh -n scripts/install_on_board.sh && git diff --check",
   "requirement_alignment": {
-    "goal": "Continue after merged PR #5 until AX650 board validation succeeds or the next concrete runtime blocker is fixed and documented.",
+    "goal": "After the validated AX650 stack PR was merged, add bilingual user-facing documentation and a board-side one-click installer.",
     "non_goals": [
-      "Do not overwrite unrelated board paths.",
-      "Do not commit model artifacts.",
-      "Do not merge PRs automatically."
+      "Do not commit model artifacts or vendor caches.",
+      "Do not overwrite unrelated user changes such as AGENTS.md and plan.md.",
+      "Do not perform destructive board operations or automatically merge the PR."
     ],
     "expected_behavior": [
-      "ASR/TTS containers can build or locate upstream AXERA server binaries instead of failing immediately after clone.",
-      "Board-side smoke checks can run against fake upstream services and real Wyoming adapters."
+      "README.md is Chinese, README_EN.md is English, and both files provide language-switch links while explaining prerequisites, install flow, ports, Home Assistant setup, model paths, validation, and troubleshooting.",
+      "The board installer checks required tools and AX650 runtime mounts, prepares directories, optionally fetches sources and models, starts Compose services, and runs public smoke validation.",
+      "The installer supports dry-run, skip downloads, skip build, Home Assistant profile, and validation-only operation."
     ],
     "constraints_and_risks": [
-      "Docker Hub access from the board currently resets connections when pulling python:3.11-slim-bookworm.",
-      "Real ASR/TTS/LLM model inference still requires model assets and upstream server binaries."
+      "Board network and disk space may vary; installer exposes skip options and a configurable free-space threshold.",
+      "Full install is intended to run on the AX650 board because it requires /soc. Dry-run can be exercised off-board."
     ],
     "acceptance_checks": [
-      "Local pytest and docker-compose config pass.",
-      "Board-side pytest and docker compose config pass.",
-      "Board-side smoke_check reports PASS for ASR/TTS/LLM HTTP surfaces and Wyoming TCP ports in adapter validation mode.",
-      "Remaining full-inference blockers are explicit."
+      "README.md is written in Chinese, README_EN.md is written in English, and both documents link to each other for language selection on GitHub.",
+      "A board-side installer script checks required tools and AX650 runtime mounts, prepares model/source directories, optionally downloads assets, builds/starts Docker Compose services, and runs the public smoke check.",
+      "The installer supports non-destructive options such as dry-run, skip downloads, skip build, Home Assistant profile, and validation-only usage.",
+      "Local validation passes with pytest, compose config, shell syntax checks, and diff whitespace checks."
     ],
-    "validation_approach": "Run local tests, board-side tests, board-side compose config, and board-side smoke_check on AX650N 10.126.35.158.",
-    "first_iteration_scope": "Add runtime build scripts for ASR/TTS server binaries, optional TTS server arguments, fake upstream services for board validation, and tests for build-on-missing behavior.",
+    "validation_approach": "Run local pytest, docker-compose config, shell syntax checks, dry-run checks, and optionally board-side dry-run if the current board checkout is reachable.",
+    "first_iteration_scope": "Single documentation/tooling iteration: README.md, README_EN.md, scripts/install_on_board.sh, tests/test_install_on_board.py.",
     "open_questions": []
-  },
-  "issues": [
-    {
-      "iteration": 1,
-      "number": 6,
-      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/6",
-      "title": "fix[1]: build AXERA ASR/TTS servers in AX650 containers",
-      "acceptance_checks": [
-        "ASR/TTS build scripts exist and are wired into Dockerfiles/start scripts.",
-        "/soc is mounted for AX MSP headers/libs.",
-        "TTS optional espeak and jieba arguments are supported.",
-        "Local tests pass.",
-        "Board-side adapter smoke check passes or next blocker is reported."
-      ]
-    },
-    {
-      "iteration": 2,
-      "number": 8,
-      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/8",
-      "title": "fix[2]: make AX650 board Docker builds reproducible",
-      "acceptance_checks": [
-        "ASR/TTS Dockerfiles allow mirrorable base image and apt sources.",
-        "Board builds can use local vendor source caches instead of cloning GitHub inside the container.",
-        "ASR and TTS images build on AX650N.",
-        "ASR and TTS upstream server build scripts compile and install asr_server and tts_server against /soc.",
-        "Local pytest and compose config pass.",
-        "Board pytest, compose config, and adapter smoke checks pass; model-asset blockers remain explicit."
-      ]
-    },
-    {
-      "iteration": 3,
-      "number": 9,
-      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/9",
-      "title": "fix[3]: harden AX runtime startup on board",
-      "acceptance_checks": [
-        "ASR/TTS startup scripts include /soc/lib and the installed server lib directory in LD_LIBRARY_PATH before starting AX server binaries.",
-        "ASR/TTS containers wait long enough for first-start server compilation and model initialization on the board.",
-        "Local pytest and compose config pass.",
-        "AX650 board ASR real model validation succeeds with a transcription response."
-      ]
-    },
-    {
-      "iteration": 4,
-      "number": 10,
-      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/10",
-      "title": "fix[4]: complete TTS model assets and readiness",
-      "acceptance_checks": [
-        "TTS model download script installs kokoro axmodels, vocab.txt, and voices/*.bin under models/tts/kokoro.",
-        "TTS startup waits for the upstream server TCP port instead of a nonexistent /healthz endpoint.",
-        "Default Chinese TTS voice matches upstream server defaults/assets.",
-        "Local pytest and compose config pass.",
-        "AX650 board TTS real speech request returns a WAV file and Wyoming port becomes reachable."
-      ]
-    },
-    {
-      "iteration": 5,
-      "number": 11,
-      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/11",
-      "title": "fix[5]: build openWakeWord without Docker Hub image pull",
-      "acceptance_checks": [
-        "openWakeWord builds from local Dockerfile using the mirrorable Python base image.",
-        "The container installs wyoming-openwakeword from PyPI and preloads the built-in ok_nabu model.",
-        "Compose exposes and health-checks Wyoming TCP port 10400.",
-        "Local pytest and compose config pass.",
-        "AX650 board openWakeWord container reaches healthy and tcp://127.0.0.1:10400 is reachable."
-      ]
-    },
-    {
-  "iteration": 7,
-      "number": 12,
-      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/12",
-      "title": "fix[6]: pin wakeword runtime deps for AX650",
-      "acceptance_checks": [
-        "openWakeWord pins numpy below 2 for tflite-runtime 2.14 compatibility.",
-        "Local pytest and compose config pass.",
-        "AX650 board openWakeWord container rebuilds and reaches healthy.",
-        "ASR, TTS, and wakeword Wyoming TCP ports are reachable on the board."
-      ]
-    },
-    {
-      "iteration": 7,
-      "number": 14,
-      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/14",
-      "title": "fix[7]: validate LLM from AX release binary",
-      "acceptance_checks": [
-        "LLM Dockerfile uses mirrorable Debian base and apt mirrors.",
-        "LLM Dockerfile installs the AX650 axllm release binary from a local vendor cache with release URL fallback.",
-        "LLM service mounts /soc, exports MSP libraries, and fails fast when model assets are missing.",
-        "Local pytest and compose config pass.",
-        "AX650 board LLM container starts and responds on 8001 with /health, /v1/models, and a minimal chat completion.",
-        "AX650 board public smoke check passes for LLM HTTP plus ASR/TTS/wakeword Wyoming ports."
-      ]
-    }
-  ],
-  "rounds": [
-    {
-      "iteration": 1,
-      "issue_number": 6,
-      "changed_files": [
-        ".build-state.json",
-        "asr/Dockerfile",
-        "asr/build_server.sh",
-        "asr/start.sh",
-        "docker-compose.yml",
-        "scripts/fake_services.py",
-        "tests/test_start_scripts.py",
-        "tts/Dockerfile",
-        "tts/build_server.sh",
-        "tts/start.sh"
-      ],
-      "implementation_summary": "Added ASR/TTS runtime build scripts, build-if-missing startup behavior, /soc mounts, TTS optional server paths, fake upstream services, and tests for build-on-missing behavior.",
-      "validation": [
-        {
-          "command": "python -m pytest -q",
-          "status": "passed",
-          "evidence": "14 passed, 1 warning"
-        },
-        {
-          "command": "docker-compose config",
-          "status": "passed",
-          "evidence": "Compose parsed successfully"
-        },
-        {
-          "command": "board python3 -m pytest -q && docker compose config",
-          "status": "passed",
-          "evidence": "14 passed on AX650N 10.126.35.158 after patch transfer"
-        },
-        {
-          "command": "board python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 2",
-          "status": "passed_adapter_validation",
-          "evidence": "All ASR/TTS/LLM HTTP and Wyoming TCP checks PASS using fake upstream HTTP services plus real ASR/TTS Wyoming adapters"
-        },
-        {
-          "command": "board docker compose build asr",
-          "status": "blocked_external_network",
-          "evidence": "Docker Hub metadata request for python:3.11-slim-bookworm reset by peer"
-        }
-      ],
-      "test_status": "pass_with_runtime_blocker",
-      "test_command": "python -m pytest -q && docker-compose config",
-      "test_summary": "Local validation passed; board-side adapter smoke validation passed. Full Docker image build is blocked by Docker Hub connectivity from the board, and real inference still needs model assets/upstream server binaries.",
-      "commit": "HEAD commit for iteration 1; final hash reported by git/PR",
-      "commit_message": "fix(iter-1): build AX servers during container startup (#6)"
-    },
-    {
-      "iteration": 2,
-      "issue_number": 8,
-      "changed_files": [
-        ".build-state.json",
-        ".gitignore",
-        "asr/Dockerfile",
-        "asr/build_server.sh",
-        "docker-compose.yml",
-        "pytest.ini",
-        "scripts/download_asr_models.sh",
-        "scripts/download_llm_models.sh",
-        "scripts/download_tts_models.sh",
-        "scripts/fetch_upstream_sources.sh",
-        "tts/Dockerfile",
-        "tts/build_server.sh",
-        "vendor/.gitkeep",
-        "vendor/ax_asr_api/.gitkeep",
-        "vendor/ax_tts_api/.gitkeep"
-      ],
-      "implementation_summary": "Added mirrorable ASR/TTS Docker build args, optional local upstream source caches, pytest testpath scoping, Python-selectable model download scripts, and AX650-native upstream build patches required by /soc libs.",
-      "validation": [
-        {
-          "command": "python -m pytest -q",
-          "status": "passed",
-          "evidence": "14 passed, 1 warning"
-        },
-        {
-          "command": "docker-compose config",
-          "status": "passed",
-          "evidence": "Compose parsed successfully with mirrored ASR/TTS build args"
-        },
-        {
-          "command": "board docker compose build asr && docker compose build tts",
-          "status": "passed",
-          "evidence": "ASR and TTS images rebuilt on AX650N 10.126.35.158 using DaoCloud Python base, USTC apt mirror, and local vendor source caches without nested .git directories; final context sizes were about 15MB for ASR and 169MB for TTS."
-        },
-        {
-          "command": "board docker compose run --rm --entrypoint /app/build_server.sh asr",
-          "status": "passed",
-          "evidence": "Built and installed /opt/ax_asr_api/install/ax650/asr_server against /soc"
-        },
-        {
-          "command": "board docker compose run --rm --entrypoint /app/build_server.sh tts",
-          "status": "passed",
-          "evidence": "Built and installed /opt/ax_tts_api/install/ax650/tts_server against /soc"
-        },
-        {
-          "command": "board python3 -m pytest -q && docker compose config",
-          "status": "passed",
-          "evidence": "14 passed on AX650N 10.126.35.158; compose config generated successfully"
-        },
-        {
-          "command": "board python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3",
-          "status": "passed_adapter_validation",
-          "evidence": "PASS for ASR/TTS/LLM HTTP surfaces and ASR/TTS/wakeword Wyoming TCP ports using fake upstream services plus real ASR/TTS adapters"
-        },
-        {
-          "command": "board find models -maxdepth 4 -type f; du -sh models/asr models/tts models/llm",
-          "status": "blocked_external_assets_for_real_inference",
-          "evidence": "models/asr, models/tts, and models/llm contain only .gitkeep files on the board, so full real inference cannot start until model assets are downloaded or provided"
-        }
-      ],
-      "test_status": "pass_with_external_asset_blocker",
-      "test_command": "python -m pytest -q && docker-compose config; board Docker builds/build_server scripts/pytest/compose/smoke_check",
-      "test_summary": "Local and board validations passed through ASR/TTS image build, native server compilation, and adapter smoke checks. Full real model inference remains blocked only by absent model artifacts under models/.",
-      "commit": "bf287f4",
-      "commit_message": "fix(iter-2): make AX650 Docker builds reproducible (#8)"
-    },
-    {
-      "iteration": 3,
-      "issue_number": 9,
-      "changed_files": [
-        ".build-state.json",
-        "asr/Dockerfile",
-        "asr/start.sh",
-        "docker-compose.yml",
-        "tts/Dockerfile",
-        "tts/start.sh"
-      ],
-      "implementation_summary": "Added /soc and installed AX server library directories to ASR/TTS runtime LD_LIBRARY_PATH and increased ASR/TTS wait timeouts so first board startup can compile and initialize real services.",
-      "validation": [
-        {
-          "command": "board docker compose up -d --build asr && docker compose ps asr",
-          "status": "passed",
-          "evidence": "ASR container on AX650N 10.126.35.158 reached Up/healthy with the real sensevoice model."
-        },
-        {
-          "command": "board docker compose exec -T asr curl -fsS http://127.0.0.1:8080/healthz",
-          "status": "passed",
-          "evidence": "{\"auth_enabled\":false,\"status\":\"ok\"}"
-        },
-        {
-          "command": "board docker compose exec -T asr curl -fsS http://127.0.0.1:8080/v1/models",
-          "status": "passed",
-          "evidence": "ASR server returned its model list."
-        },
-        {
-          "command": "board docker compose exec -T asr curl -fsS http://127.0.0.1:8080/v1/audio/transcriptions -F file=@/opt/ax_asr_api/demo.wav -F model=sensevoice -F language=zh -F response_format=json",
-          "status": "passed",
-          "evidence": "{\"text\":\"甚至出现交易几乎停滞的情况。\"}"
-        },
-        {
-          "command": "python -m pytest -q",
-          "status": "passed",
-          "evidence": "14 passed, 1 warning"
-        },
-        {
-          "command": "docker-compose config",
-          "status": "passed",
-          "evidence": "Compose parsed successfully with 300s ASR/TTS wait timeout settings."
-        }
-      ],
-      "test_status": "pass",
-      "test_command": "python -m pytest -q && docker-compose config",
-      "test_summary": "Local validation passed and board ASR real inference returned a Chinese transcription from the sensevoice model.",
-      "commit": "13b3580",
-      "commit_message": "fix(iter-3): harden AX runtime startup on board (#9)"
-    },
-    {
-      "iteration": 4,
-      "issue_number": 10,
-      "changed_files": [
-        ".build-state.json",
-        "docker-compose.yml",
-        "scripts/download_tts_models.sh",
-        "tests/test_start_scripts.py",
-        "tests/test_tts_adapter.py",
-        "tts/start.sh",
-        "tts/wyoming_adapter.py"
-      ],
-      "implementation_summary": "Completed kokoro TTS model asset download, switched TTS startup readiness to the upstream server TCP port, and changed the default Chinese voice to zf_xiaoxiao.",
-      "validation": [
-        {
-          "command": "python -m pytest -q",
-          "status": "passed",
-          "evidence": "14 passed, 1 warning"
-        },
-        {
-          "command": "docker-compose config",
-          "status": "passed",
-          "evidence": "Compose parsed successfully with TTS voice zf_xiaoxiao."
-        },
-        {
-          "command": "board HF_ENDPOINT=https://hf-mirror.com hf download AXERA-TECH/kokoro.axera --include cpp/dict/vocab.txt --include cpp/voices/*.bin",
-          "status": "passed",
-          "evidence": "Downloaded 55 kokoro asset files; models/tts/kokoro/vocab.txt and voices/zf_xiaoxiao.bin are present."
-        },
-        {
-          "command": "board docker compose up -d --build tts && docker compose ps tts",
-          "status": "passed",
-          "evidence": "TTS container on AX650N 10.126.35.158 reached Up/healthy and published tcp://127.0.0.1:10200."
-        },
-        {
-          "command": "board docker compose exec -T tts curl -fsS -o /tmp/out.wav -H 'Content-Type: application/json' -d '{...}' http://127.0.0.1:8081/v1/audio/speech",
-          "status": "passed",
-          "evidence": "Real TTS request returned /tmp/out.wav, 23K, using kokoro zh voice zf_xiaoxiao."
-        },
-        {
-          "command": "board python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3",
-          "status": "partial_expected_failure",
-          "evidence": "PASS for ASR Wyoming 10300 and TTS Wyoming 10200. Host-side ASR/TTS HTTP checks fail because compose exposes only Wyoming ports; wakeword and LLM are not started yet."
-        }
-      ],
-      "test_status": "pass_with_remaining_services",
-      "test_command": "python -m pytest -q && docker-compose config; board TTS real speech and Wyoming TCP checks",
-      "test_summary": "Local validation passed and board real TTS speech generation returned a WAV file; ASR/TTS Wyoming ports are reachable. Wakeword and LLM real validation remain.",
-      "commit": "805976a",
-      "commit_message": "fix(iter-4): complete TTS model assets and readiness (#10)"
-    },
-    {
-      "iteration": 5,
-      "issue_number": 11,
-      "changed_files": [
-        ".build-state.json",
-        "README.md",
-        "docker-compose.yml",
-        "tests/test_smoke_check.py",
-        "wakeword/Dockerfile",
-        "wakeword/requirements.txt",
-        "wakeword/start.sh"
-      ],
-      "implementation_summary": "Replaced the direct rhasspy/wyoming-openwakeword Docker Hub image pull with a local wakeword image build that installs wyoming-openwakeword from PyPI and preloads ok_nabu.",
-      "validation": [
-        {
-          "command": "python -m pytest -q",
-          "status": "passed",
-          "evidence": "17 passed, 1 warning"
-        },
-        {
-          "command": "docker-compose config",
-          "status": "passed",
-          "evidence": "Compose parsed successfully and openWakeWord uses wakeword/Dockerfile instead of rhasspy/wyoming-openwakeword."
-        },
-        {
-          "command": "board docker compose up -d --build openwakeword",
-          "status": "passed",
-          "evidence": "Built openWakeWord on AX650N 10.126.35.158 using DaoCloud Python base, USTC apt mirror, and PyPI packages. A follow-up pin is required because tflite-runtime 2.14 is not compatible with numpy 2.x."
-        },
-        {
-          "command": "board docker compose ps openwakeword; tcp connect 127.0.0.1:10400",
-          "status": "passed",
-          "evidence": "openWakeWord container reached Up/healthy and tcp://127.0.0.1:10400 was reachable."
-        }
-      ],
-      "test_status": "pass_with_remaining_llm",
-      "test_command": "python -m pytest -q && docker-compose config; board openWakeWord build and TCP health check",
-      "test_summary": "Local validation passed and board openWakeWord real container is healthy on Wyoming port 10400. LLM real validation remains.",
-      "commit": "e8a7ada",
-      "commit_message": "fix(iter-5): build openWakeWord without Docker Hub image pull (#11)"
-    },
-    {
-      "iteration": 6,
-      "issue_number": 12,
-      "changed_files": [
-        ".build-state.json",
-        "wakeword/requirements.txt"
-      ],
-      "implementation_summary": "Pinned wakeword numpy to <2 so tflite-runtime 2.14 can load its native extension on AX650/aarch64.",
-      "validation": [
-        {
-          "command": "python -m pytest -q",
-          "status": "passed",
-          "evidence": "16 passed, 1 warning"
-        },
-        {
-          "command": "docker-compose config",
-          "status": "passed",
-          "evidence": "Compose parsed successfully."
-        },
-        {
-          "command": "board docker compose rm -sf openwakeword && docker compose up -d --build openwakeword",
-          "status": "passed",
-          "evidence": "Rebuilt openWakeWord on AX650N 10.126.35.158 with numpy 1.26.4, tflite-runtime 2.14.0, and wyoming-openwakeword 1.8.2."
-        },
-        {
-          "command": "board docker compose ps asr tts openwakeword",
-          "status": "passed",
-          "evidence": "ASR, TTS, and openWakeWord containers are Up/healthy on Wyoming ports 10300, 10200, and 10400."
-        },
-        {
-          "command": "board python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3 --llm-port 65535",
-          "status": "partial_expected_failure",
-          "evidence": "PASS for ASR, TTS, and wakeword Wyoming TCP ports; HTTP host checks and LLM remain outside this wakeword fix."
-        }
-      ],
-      "test_status": "pass_with_remaining_llm",
-      "test_command": "python -m pytest -q && docker-compose config; board openWakeWord rebuild and TCP health check",
-      "test_summary": "Local validation passed and board openWakeWord is healthy with numpy<2. LLM real validation remains.",
-      "commit": "b64cffd",
-      "commit_message": "fix(iter-6): pin wakeword runtime deps for AX650 (#12)"
-    },
-    {
-      "iteration": 7,
-      "issue_number": 14,
-      "changed_files": [
-        ".build-state.json",
-        ".gitignore",
-        "README.md",
-        "docker-compose.yml",
-        "llm/Dockerfile",
-        "llm/start.sh",
-        "scripts/smoke_check.py",
-        "tests/test_smoke_check.py",
-        "vendor/axllm/.gitkeep"
-      ],
-      "implementation_summary": "Reworked the LLM image to use mirrorable Debian packages, install axllm from a local vendor cache with release URL fallback, mount /soc, and added public-only smoke checks for the externally exposed stack.",
-      "validation": [
-        {
-          "command": "python -m pytest -q",
-          "status": "passed",
-          "evidence": "16 passed, 1 warning"
-        },
-        {
-          "command": "docker-compose config",
-          "status": "passed",
-          "evidence": "Compose parsed successfully with LLM build args, /soc read-only mount, and public-only smoke check support."
-        },
-        {
-          "command": "board docker compose build llm",
-          "status": "passed",
-          "evidence": "LLM image built on AX650N 10.126.35.158 using the vendor/axllm/axllm-ax650-linux-arm64 cache; cache sha256 matches AXERA release asset."
-        },
-        {
-          "command": "board docker compose up -d llm && docker compose ps llm",
-          "status": "passed",
-          "evidence": "LLM container reached Up/healthy on port 8001 with Qwen3-0.6B model assets."
-        },
-        {
-          "command": "board curl -fsS http://127.0.0.1:8001/v1/models",
-          "status": "passed",
-          "evidence": "Returned model id AXERA-TECH/Qwen3-0.6B."
-        },
-        {
-          "command": "board curl -fsS -H 'Content-Type: application/json' -d '{...}' http://127.0.0.1:8001/v1/chat/completions",
-          "status": "passed",
-          "evidence": "Returned HTTP 200 chat.completion for model AXERA-TECH/Qwen3-0.6B."
-        },
-        {
-          "command": "board python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3 --public-only",
-          "status": "passed",
-          "evidence": "PASS llm-http, asr-wyoming, tts-wyoming, and wakeword-wyoming."
-        }
-      ],
-      "test_status": "pass",
-      "test_command": "python -m pytest -q && docker-compose config; board LLM real validation and public smoke check",
-      "test_summary": "Local validation passed and all board public service surfaces are healthy: LLM HTTP 8001 plus ASR/TTS/openWakeWord Wyoming ports.",
-      "commit": "pending",
-      "commit_message": "fix(iter-7): validate LLM from AX release binary (#14)"
-    }
-  ],
-  "selected_board": {
-    "ip": "10.126.35.158",
-    "hostname": "ax650",
-    "chip_type": "AX650N_CHIP"
   },
   "pre_existing_changes": [
     "?? AGENTS.md",
     "?? plan.md"
   ],
   "assumptions": [
-    "Password authentication with the approved default password was used via sshpass.",
-    "Remote work was moved from /tmp to /root/ax650-home-assistant-board-validation because /tmp is tmpfs and filled during model download.",
-    "AGENTS.md and plan.md are pre-existing local files and are not staged.",
-    "Vendor source caches under vendor/ax_asr_api and vendor/ax_tts_api are local ignored build inputs; only .gitkeep placeholders are committed.",
-    "ASR real inference, TTS real speech generation, openWakeWord Wyoming service, and LLM Qwen3-0.6B OpenAI-compatible API are validated on the selected AX650 board."
-  ]
+    "The PR target branch is main.",
+    "The installer should run from the repository root on the board.",
+    "Model and vendor artifacts remain ignored and are not staged."
+  ],
+  "issues": [
+    {
+      "iteration": 1,
+      "number": 15,
+      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/15",
+      "title": "docs[1]: add Chinese README and board installer",
+      "acceptance_checks": [
+        "README.md is written in Chinese, README_EN.md is written in English, and both documents link to each other for language selection on GitHub.",
+        "A board-side installer script checks required tools and AX650 runtime mounts, prepares model/source directories, optionally downloads assets, builds/starts Docker Compose services, and runs the public smoke check.",
+        "The installer supports non-destructive options such as dry-run, skip downloads, skip build, Home Assistant profile, and validation-only usage.",
+        "Local validation passes with pytest, compose config, and shell syntax checks."
+      ]
+    }
+  ],
+  "rounds": [
+    {
+      "iteration": 1,
+      "issue_number": 15,
+      "changed_files": [
+        ".build-state.json",
+        "README.md",
+        "README_EN.md",
+        "scripts/install_on_board.sh",
+        "tests/test_install_on_board.py"
+      ],
+      "implementation_summary": "Kept README.md as the Chinese GitHub entrypoint, added README_EN.md as the English version with language-switch links, added a non-destructive AX650 board installer with dry-run/skip/validate modes, and added tests for shell syntax plus dry-run behavior.",
+      "validation": [
+        {
+          "command": "sh -n scripts/install_on_board.sh",
+          "status": "passed",
+          "evidence": "Shell syntax check passed."
+        },
+        {
+          "command": "python -m pytest -q tests/test_install_on_board.py",
+          "status": "passed",
+          "evidence": "3 passed."
+        },
+        {
+          "command": "COMPOSE=\"docker compose\" MIN_FREE_MB=1 sh scripts/install_on_board.sh --dry-run --skip-vendor --skip-models --skip-build --smoke-timeout 1",
+          "status": "passed",
+          "evidence": "Dry-run printed mkdir, compose ps, and public smoke_check commands without executing mutations."
+        },
+        {
+          "command": "python -m pytest -q",
+          "status": "passed",
+          "evidence": "20 passed, 1 warning."
+        },
+        {
+          "command": "docker-compose config",
+          "status": "passed",
+          "evidence": "Compose config rendered successfully."
+        },
+        {
+          "command": "git diff --check",
+          "status": "passed",
+          "evidence": "No whitespace errors after README EOF fix."
+        },
+        {
+          "command": "board sh -n scripts/install_on_board.sh && MIN_FREE_MB=1 sh scripts/install_on_board.sh --dry-run --validate-only --smoke-timeout 1",
+          "status": "passed",
+          "evidence": "AX650N 10.126.35.158 reported /root free space 11934 MB and dry-run printed compose ps plus public smoke_check without starting services."
+        },
+        {
+          "command": "grep -n \"README_EN.md\\|README.md\" README.md README_EN.md",
+          "status": "passed",
+          "evidence": "Both README.md and README_EN.md expose language-switch links."
+        }
+      ],
+      "test_status": "pass",
+      "test_command": "python -m pytest -q && docker-compose config && sh -n scripts/install_on_board.sh && git diff --check; board dry-run validate-only",
+      "test_summary": "Local tests, compose config, shell syntax, diff whitespace, bilingual README link check, and AX650N board dry-run validation passed.",
+      "commit": "HEAD commit on feat/build-20260630-readme-install; final hash is reported by git/PR.",
+      "commit_message": "docs(iter-1): add bilingual README and board installer (#15)"
+    }
+  ],
+  "gate_decision": {
+    "iteration": 1,
+    "result": "done",
+    "rationale": "Single requested documentation/tooling slice is complete and validated locally plus with a board-side dry-run."
+  },
+  "pull_request": "https://github.com/ml-inory/ax650-home-assistant/pull/16",
+  "status": "pr_created"
 }
