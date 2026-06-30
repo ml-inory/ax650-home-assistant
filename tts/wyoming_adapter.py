@@ -39,7 +39,7 @@ class TtsConfig:
     api_url: str = "http://127.0.0.1:8081"
     model: str = "kokoro"
     language: str = "zh"
-    voice: str = "jm_kumo"
+    voice: str = "zf_xiaoxiao"
     response_format: str = "wav"
     speed: float = 1.0
     timeout: float = 120.0
@@ -196,7 +196,7 @@ async def main() -> None:
     parser.add_argument("--api-url", default="http://127.0.0.1:8081")
     parser.add_argument("--model", default="kokoro")
     parser.add_argument("--language", default="zh")
-    parser.add_argument("--voice", default="jm_kumo")
+    parser.add_argument("--voice", default="zf_xiaoxiao")
     parser.add_argument("--speed", type=float, default=1.0)
     parser.add_argument("--samples-per-chunk", type=int, default=1024)
     parser.add_argument("--timeout", type=float, default=120.0)

@@ -6,7 +6,7 @@ This project mirrors the service layout from `rk3576-home-assistant-voice`, but 
 
 - Speech-to-text with AXERA `ax_asr_api`, wrapped as Wyoming on `10300`
 - Text-to-speech with AXERA `ax_tts_api`, wrapped as Wyoming on `10200`
-- Wake-word detection with `rhasspy/wyoming-openwakeword` on `10400`
+- Wake-word detection with `wyoming-openwakeword` on `10400`
 - Local conversation handling with AXERA `axllm`, OpenAI-compatible API on `8001`
 - Optional Home Assistant container profile
 
@@ -99,7 +99,7 @@ models/llm  -> /models/llm
 Defaults:
 
 - ASR: `sensevoice`, language `auto`
-- TTS: `kokoro`, language `zh`, voice `jm_kumo`
+- TTS: `kokoro`, language `zh`, voice `zf_xiaoxiao`
 - LLM: `AXERA-TECH/Qwen3-0.6B`, expected at `models/llm/Qwen3-0.6B`
 
 ## Runtime Contract
@@ -121,6 +121,9 @@ Startup fails fast if the upstream server binary or model path is missing. Overr
 | TTS | `AX_TTS_SERVER_PORT` | `8081` |
 | TTS | `AX_TTS_MODEL_PATH` | `/models/tts` |
 | TTS | `AX_TTS_ADAPTER_URI` | `tcp://0.0.0.0:10200` |
+| LLM | `AX_LLM_MODEL_DIR` | `/models/llm/Qwen3-0.6B` |
+| LLM | `AX_LLM_PORT` | `8001` |
+| LLM | `AX_LLM_RELEASE_URL` | `https://github.com/AXERA-TECH/ax-llm/releases/download/latest/axllm-ax650-linux-arm64` |
 
 For adapter-only debugging against an already running HTTP server, set `AX_ASR_ADAPTER_ONLY=1` or `AX_TTS_ADAPTER_ONLY=1` and point `AX_ASR_HTTP_URL` or `AX_TTS_HTTP_URL` at that server.
 

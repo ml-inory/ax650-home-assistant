@@ -66,14 +66,17 @@ def run_checks(args: argparse.Namespace) -> list[CheckResult]:
     tts_http = f"http://{args.host}:{args.tts_http_port}/healthz"
     llm_base = f"http://{args.host}:{args.llm_port}"
 
-    return [
-        check_http_any("asr-http", [asr_http], args.timeout),
-        check_http_any("tts-http", [tts_http], args.timeout),
+    checks = [
         check_http_any("llm-http", [f"{llm_base}/health", f"{llm_base}/v1/models"], args.timeout),
         check_tcp("asr-wyoming", args.host, args.asr_wyoming_port, args.timeout),
         check_tcp("tts-wyoming", args.host, args.tts_wyoming_port, args.timeout),
         check_tcp("wakeword-wyoming", args.host, args.wakeword_port, args.timeout),
     ]
+    if not args.public_only:
+        checks.insert(0, check_http_any("tts-http", [tts_http], args.timeout))
+        checks.insert(0, check_http_any("asr-http", [asr_http], args.timeout))
+
+    return checks
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -86,6 +89,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tts-wyoming-port", type=int, default=10200)
     parser.add_argument("--wakeword-port", type=int, default=10400)
     parser.add_argument("--timeout", type=float, default=2.0)
+    parser.add_argument(
+        "--public-only",
+        action="store_true",
+        help="Check only externally published service surfaces: LLM HTTP plus Wyoming TCP ports.",
+    )
     return parser
 
 

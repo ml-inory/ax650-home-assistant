@@ -1,4 +1,8 @@
-FROM python:3.11-slim-bookworm
+ARG BASE_IMAGE=python:3.11-slim-bookworm
+FROM ${BASE_IMAGE}
+ARG APT_DEBIAN_MIRROR=
+ARG APT_SECURITY_MIRROR=
+ARG AX_ASR_REPO=https://github.com/AXERA-TECH/ax_asr_api.git
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -10,12 +14,18 @@ ENV PYTHONUNBUFFERED=1 \
     AX_ASR_SERVER_BIN=/opt/ax_asr_api/install/ax650/asr_server \
     AX_ASR_SERVER_PORT=8080 \
     AX_ASR_ADAPTER_URI=tcp://0.0.0.0:10300 \
-    AX_ASR_WAIT_TIMEOUT=30 \
+    AX_ASR_WAIT_TIMEOUT=300 \
     AX_ASR_ADAPTER_ONLY=0
 
 WORKDIR /app
 
-RUN apt-get update \
+RUN if [ -n "$APT_DEBIAN_MIRROR" ]; then \
+        sed -i "s|http://deb.debian.org/debian-security|${APT_SECURITY_MIRROR:-$APT_DEBIAN_MIRROR}|g; s|http://deb.debian.org/debian|$APT_DEBIAN_MIRROR|g" /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources 2>/dev/null || true; \
+    fi \
+    && if [ -n "$APT_SECURITY_MIRROR" ]; then \
+        sed -i "s|http://deb.debian.org/debian-security|$APT_SECURITY_MIRROR|g" /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources 2>/dev/null || true; \
+    fi \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         cmake \
@@ -33,11 +43,18 @@ RUN python -m pip install --upgrade pip \
 
 # Board validation must confirm the exact AX650 runtime/BSP layout. This
 # scaffold follows AXERA-TECH/ax_asr_api's documented AX650 build entrypoint.
-RUN git clone --depth=1 https://github.com/AXERA-TECH/ax_asr_api.git /opt/ax_asr_api
+COPY vendor/ax_asr_api /tmp/vendor/ax_asr_api
+RUN if [ -f /tmp/vendor/ax_asr_api/CMakeLists.txt ]; then \
+        cp -a /tmp/vendor/ax_asr_api /opt/ax_asr_api; \
+    else \
+        git clone --depth=1 "$AX_ASR_REPO" /opt/ax_asr_api; \
+    fi \
+    && rm -rf /tmp/vendor
 
 COPY asr/wyoming_adapter.py /app/wyoming_adapter.py
 COPY asr/start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+COPY asr/build_server.sh /app/build_server.sh
+RUN chmod +x /app/start.sh /app/build_server.sh
 
 EXPOSE 10300
 

@@ -3,11 +3,12 @@ set -eu
 
 TARGET_DIR="${1:-models/asr}"
 HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
+PYTHON="${PYTHON:-python3}"
 
 mkdir -p "$TARGET_DIR"
 export HF_ENDPOINT
 
-python -m pip install -U huggingface_hub
+"$PYTHON" -m pip install -U huggingface_hub
 hf download AXERA-TECH/SenseVoice --local-dir "$TARGET_DIR/SenseVoice"
 
 mkdir -p "$TARGET_DIR/sensevoice"

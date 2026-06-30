@@ -53,7 +53,7 @@ async def test_request_speech_posts_openai_style_json() -> None:
         api_url="http://tts:8081",
         model="kokoro",
         language="zh",
-        voice="jm_kumo",
+        voice="zf_xiaoxiao",
         speed=1.0,
     )
 
@@ -67,7 +67,7 @@ async def test_request_speech_posts_openai_style_json() -> None:
                 "model": "kokoro",
                 "input": "打开客厅灯",
                 "instructions": "zh",
-                "voice": "jm_kumo",
+                "voice": "zf_xiaoxiao",
                 "response_format": "wav",
                 "speed": 1.0,
             },
