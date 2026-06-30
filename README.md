@@ -1,117 +1,158 @@
-# Home Assistant Voice on AX650
+# AX650 Home Assistant Voice
 
-A local Home Assistant Assist voice stack for AX650 boards.
+[中文](README.md) | [English](README_EN.md)
 
-This project mirrors the service layout from `rk3576-home-assistant-voice`, but replaces the RKNN/RKLLM pieces with AX650 services:
+这是一个运行在 AX650/AX650N 板端的本地 Home Assistant Assist 语音栈。项目复刻 `rk3576-home-assistant-voice` 的服务布局，并把 RKNN/RKLLM 运行时替换为 AXERA 生态组件：
 
-- Speech-to-text with AXERA `ax_asr_api`, wrapped as Wyoming on `10300`
-- Text-to-speech with AXERA `ax_tts_api`, wrapped as Wyoming on `10200`
-- Wake-word detection with `wyoming-openwakeword` on `10400`
-- Local conversation handling with AXERA `axllm`, OpenAI-compatible API on `8001`
-- Optional Home Assistant container profile
+- ASR：AXERA `ax_asr_api`，以 Wyoming STT 服务暴露在 `10300`
+- TTS：AXERA `ax_tts_api`，以 Wyoming TTS 服务暴露在 `10200`
+- 唤醒词：`wyoming-openwakeword`，暴露在 `10400`
+- 本地对话：AXERA `axllm`，以 OpenAI 兼容 API 暴露在 `8001`
+- 可选 Home Assistant 容器 profile
 
-## What You Need
+## 板端要求
 
-- AX650 board running Linux ARM64
-- Docker Engine with the Docker Compose plugin
-- Access to AX650 device nodes through `/dev`
-- Model files under `models/`, downloaded by scripts or copied manually
-- Home Assistant on the same network, unless using the optional profile
+- AX650 或 AX650N Linux ARM64 开发板
+- Docker Engine 和 Docker Compose v2 插件，或 `docker-compose`
+- 板端可访问 `/dev` 和 `/soc`，容器会挂载 `/dev:/dev`、`/soc:/soc:ro`
+- Python 3、pip、git、curl
+- 足够的模型和镜像空间，建议仓库所在分区至少预留 8 GB
+- Home Assistant 与板子在同一网络，除非使用本仓库的可选 Home Assistant profile
 
-The first implementation is a reviewable scaffold with locally tested Wyoming adapters. Real AX650 image/runtime validation is a follow-up step.
+模型和上游源码缓存不会提交到 git。默认会写入：
 
-## Quick Start
+```text
+models/asr  -> /models/asr
+models/tts  -> /models/tts
+models/llm  -> /models/llm
+vendor/ax_asr_api
+vendor/ax_tts_api
+vendor/axllm
+```
 
-Prepare models on the AX650 board:
+## 一键安装
+
+把仓库放到板端后，在仓库根目录执行：
 
 ```bash
+bash scripts/install_on_board.sh
+```
+
+安装脚本会按顺序完成：
+
+1. 检查 Docker、Compose、Python、git、curl、`/dev`、`/soc` 和磁盘空间。
+2. 创建 `models/` 和 `vendor/` 目录。
+3. 拉取 ASR/TTS 上游源码缓存，避免 Docker build 阶段反复访问 GitHub。
+4. 下载 ASR、TTS、LLM 模型，默认使用 `https://hf-mirror.com`。
+5. 构建并启动 ASR、TTS、openWakeWord、LLM 服务。
+6. 执行公开端口 smoke check。
+
+常用参数：
+
+```bash
+# 只打印将要执行的命令，不改动文件系统
+bash scripts/install_on_board.sh --dry-run
+
+# 模型已经准备好时跳过模型下载
+bash scripts/install_on_board.sh --skip-models
+
+# 上游源码缓存已经准备好时跳过 vendor 拉取
+bash scripts/install_on_board.sh --skip-vendor
+
+# 只检查已经运行的服务，不重新构建/启动
+bash scripts/install_on_board.sh --validate-only
+
+# 同时启动本仓库的 Home Assistant profile
+bash scripts/install_on_board.sh --with-homeassistant
+
+# 降低磁盘空间门槛，单位 MB
+bash scripts/install_on_board.sh --min-free-mb 4096
+```
+
+常用环境变量：
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `HF_ENDPOINT` | `https://hf-mirror.com` | Hugging Face 下载端点 |
+| `PYTHON` | `python3` | 板端 Python 命令 |
+| `COMPOSE` | 自动探测 | `docker compose` 或 `docker-compose` |
+| `SMOKE_HOST` | `127.0.0.1` | smoke check 访问的主机 |
+| `SMOKE_TIMEOUT` | `3` | smoke check 单项超时时间 |
+| `MIN_FREE_MB` | `8192` | 仓库分区最低可用空间 |
+| `AX_LLM_RELEASE_URL` | compose 默认值 | AX LLM release binary 下载地址 |
+
+如果板端磁盘空间不足，可以把仓库或 `models/` 目录放在本机挂载到板子的路径上，再在挂载目录中运行安装脚本。
+
+## 手动启动
+
+如果不使用一键安装，也可以分步执行：
+
+```bash
+bash scripts/fetch_upstream_sources.sh
 bash scripts/download_asr_models.sh
 bash scripts/download_tts_models.sh
 bash scripts/download_llm_models.sh
+docker compose up -d --build
 ```
 
-Start only the voice stack:
+启动语音栈加 Home Assistant：
 
 ```bash
-sudo docker compose up -d --build
+docker compose --profile homeassistant up -d --build
 ```
 
-Start the voice stack plus Home Assistant:
+检查状态：
 
 ```bash
-sudo docker compose --profile homeassistant up -d --build
+docker compose ps
+docker compose logs -f
+python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3 --public-only
 ```
 
-Check status:
+如果板端只有旧版 `docker-compose`，把上面的 `docker compose` 换成 `docker-compose`。
 
-```bash
-sudo docker compose ps
-sudo docker compose logs -f
-```
+## 服务端口
 
-Run a service-surface smoke check from the machine that can reach the stack:
-
-```bash
-python scripts/smoke_check.py --host AX650_BOARD_IP
-```
-
-## Services
-
-| Service | Purpose | Port |
+| 服务 | 用途 | 端口 |
 | --- | --- | ---: |
 | ASR | Wyoming STT adapter for `ax_asr_api` | `10300` |
 | TTS | Wyoming TTS adapter for `ax_tts_api` | `10200` |
 | openWakeWord | Wyoming wake-word detection | `10400` |
-| LLM | OpenAI-compatible `axllm serve` API | `8001` |
+| LLM | OpenAI 兼容 `axllm serve` API | `8001` |
 
-## Configure Home Assistant
+## Home Assistant 配置
 
-Add Wyoming integrations with the AX650 board IP:
+在 Home Assistant 中添加 Wyoming 集成：
 
-| Service | Host | Port |
+| 集成 | Host | Port |
 | --- | --- | ---: |
-| AX650 ASR | AX650 board IP | `10300` |
-| AX650 TTS | AX650 board IP | `10200` |
-| openWakeWord | AX650 board IP | `10400` |
+| AX650 ASR | AX650 板子 IP | `10300` |
+| AX650 TTS | AX650 板子 IP | `10200` |
+| openWakeWord | AX650 板子 IP | `10400` |
 
-For local conversation, add a Local LLM/OpenAI-compatible integration with:
+本地对话服务使用 OpenAI 兼容配置：
 
 ```text
-API hostname: AX650 board IP
+API hostname: AX650 板子 IP
 API port: 8001
 API path: /v1
 API key: sk-local
 Model name: axllm-model
 ```
 
-Then create or edit an Assist pipeline and select the AX650 STT, TTS, wake-word, and local conversation services.
+然后创建或编辑 Assist pipeline，选择 AX650 的 STT、TTS、唤醒词和本地对话服务。
 
-## Models
+## 模型默认值
 
-Model artifacts are not committed. The compose file bind-mounts:
+| 模块 | 默认模型/路径 |
+| --- | --- |
+| ASR | `sensevoice`，语言 `auto`，路径 `models/asr/sensevoice` |
+| TTS | `kokoro`，语言 `zh`，声音 `zf_xiaoxiao`，路径 `models/tts/kokoro` |
+| LLM | `AXERA-TECH/Qwen3-0.6B`，路径 `models/llm/Qwen3-0.6B` |
 
-```text
-models/asr  -> /models/asr
-models/tts  -> /models/tts
-models/llm  -> /models/llm
-```
+## 运行时变量
 
-Defaults:
-
-- ASR: `sensevoice`, language `auto`
-- TTS: `kokoro`, language `zh`, voice `zf_xiaoxiao`
-- LLM: `AXERA-TECH/Qwen3-0.6B`, expected at `models/llm/Qwen3-0.6B`
-
-## Runtime Contract
-
-The ASR and TTS containers run two processes:
-
-1. the upstream AXERA HTTP server on localhost
-2. the Wyoming adapter exposed to Home Assistant
-
-Startup fails fast if the upstream server binary or model path is missing. Override paths and ports with environment variables:
-
-| Service | Variable | Default |
+| 服务 | 变量 | 默认值 |
 | --- | --- | --- |
 | ASR | `AX_ASR_SERVER_BIN` | `/opt/ax_asr_api/install/ax650/asr_server` |
 | ASR | `AX_ASR_SERVER_PORT` | `8080` |
@@ -125,40 +166,37 @@ Startup fails fast if the upstream server binary or model path is missing. Overr
 | LLM | `AX_LLM_PORT` | `8001` |
 | LLM | `AX_LLM_RELEASE_URL` | `https://github.com/AXERA-TECH/ax-llm/releases/download/latest/axllm-ax650-linux-arm64` |
 
-For adapter-only debugging against an already running HTTP server, set `AX_ASR_ADAPTER_ONLY=1` or `AX_TTS_ADAPTER_ONLY=1` and point `AX_ASR_HTTP_URL` or `AX_TTS_HTTP_URL` at that server.
+调试 adapter 时，如果已经有独立 ASR/TTS HTTP 服务，可以设置 `AX_ASR_ADAPTER_ONLY=1` 或 `AX_TTS_ADAPTER_ONLY=1`，并把 `AX_ASR_HTTP_URL` 或 `AX_TTS_HTTP_URL` 指向对应服务。
 
-## Development Checks
+## 本地开发验证
 
-Install local test dependencies:
+安装测试依赖：
 
 ```bash
 python -m pip install -r requirements-dev.txt
 ```
 
-Run validation:
+运行验证：
 
 ```bash
 python -m pytest -q
-docker compose config
+docker-compose config
+sh -n scripts/install_on_board.sh
 ```
 
-Run smoke checks against a local or board-side stack:
+对已经启动的板端服务执行 smoke check：
 
 ```bash
-python scripts/smoke_check.py --host 127.0.0.1
-python scripts/smoke_check.py --host AX650_BOARD_IP
+python3 scripts/smoke_check.py --host AX650_BOARD_IP --timeout 3 --public-only
 ```
 
-The smoke check verifies ASR/TTS HTTP health endpoints, LLM HTTP health or model listing, and the three Wyoming TCP ports.
+## 故障排查
 
-## Troubleshooting
-
-If ASR or TTS logs say the `asr_server` or `tts_server` binary is missing, build the corresponding AXERA upstream project for AX650 inside the image or replace the scaffold with a prebuilt runtime artifact:
-
-- `https://github.com/AXERA-TECH/ax_asr_api`
-- `https://github.com/AXERA-TECH/ax_tts_api`
-
-If the LLM does not answer, confirm the model path exists and the API responds:
+- `/soc` 不存在：请确认在 AX650 板端运行，且板端系统提供 AX MSP 运行时。
+- Docker 拉镜像慢或失败：默认 compose 已使用 DaoCloud Python/Debian 镜像和 USTC apt 源；仍失败时优先检查板端网络和 DNS。
+- ASR/TTS 缺少 `asr_server` 或 `tts_server`：确认 `vendor/ax_asr_api`、`vendor/ax_tts_api` 已拉取，容器启动时会尝试在板端编译。
+- 模型缺失：重新执行对应下载脚本，或手动把模型放到 `models/asr`、`models/tts`、`models/llm`。
+- LLM 没有响应：检查 `models/llm/Qwen3-0.6B` 是否完整，并尝试：
 
 ```bash
 curl http://AX650_IP:8001/v1/models
