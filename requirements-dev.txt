@@ -1,0 +1,4 @@
+-r asr/requirements.txt
+-r tts/requirements.txt
+pytest>=8,<9
+pytest-asyncio>=0.23,<1

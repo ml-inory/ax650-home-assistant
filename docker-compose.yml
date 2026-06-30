@@ -1,0 +1,77 @@
+services:
+  asr:
+    build:
+      context: .
+      dockerfile: asr/Dockerfile
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "10300:10300"
+    volumes:
+      - /dev:/dev
+      - ./models/asr:/models/asr:ro
+    environment:
+      AX_ASR_MODEL_PATH: /models/asr
+      AX_ASR_MODEL: sensevoice
+      AX_ASR_LANGUAGE: auto
+      AX_ASR_HTTP_URL: http://127.0.0.1:8080
+
+  tts:
+    build:
+      context: .
+      dockerfile: tts/Dockerfile
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "10200:10200"
+    volumes:
+      - /dev:/dev
+      - ./models/tts:/models/tts:ro
+    environment:
+      AX_TTS_MODEL_PATH: /models/tts
+      AX_TTS_MODEL: kokoro
+      AX_TTS_LANGUAGE: zh
+      AX_TTS_VOICE: jm_kumo
+      AX_TTS_HTTP_URL: http://127.0.0.1:8081
+
+  openwakeword:
+    image: rhasspy/wyoming-openwakeword
+    restart: unless-stopped
+    ports:
+      - "10400:10400"
+    command:
+      - --uri
+      - tcp://0.0.0.0:10400
+      - --preload-model
+      - ok_nabu
+
+  llm:
+    build:
+      context: .
+      dockerfile: llm/Dockerfile
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "8001:8001"
+    volumes:
+      - /dev:/dev
+      - ./models/llm:/models/llm:ro
+    environment:
+      AX_LLM_MODEL_DIR: /models/llm/Qwen3-0.6B
+      AX_LLM_PORT: "8001"
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    profiles: [homeassistant]
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - ./homeassistant/config:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    depends_on:
+      - asr
+      - tts
+      - openwakeword
+      - llm

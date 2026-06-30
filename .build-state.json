@@ -1,0 +1,126 @@
+{
+  "goal": "Replicate the rk3576-home-assistant-voice Home Assistant local voice stack for AX650 board-side Docker according to plan.md.",
+  "stack": "Python adapters plus Docker Compose",
+  "base_branch": "main",
+  "branch": "feat/build-20260630-1440",
+  "iteration": 1,
+  "validation_command": "python -m pytest -q && docker-compose config",
+  "requirement_alignment": {
+    "goal": "Create an AX650 implementation that preserves the Home Assistant integration experience from rk3576-home-assistant-voice: Wyoming STT on 10300, Wyoming TTS on 10200, openWakeWord on 10400, OpenAI-compatible LLM on 8001, and optional Home Assistant profile.",
+    "non_goals": [
+      "Do not migrate RKNN or RKLLM artifacts from the RK3576 repository.",
+      "Do not commit large model files or .axmodel assets.",
+      "Do not deploy or run the stack on an AX650 board in the first iteration.",
+      "Do not publish Docker images or merge a PR automatically."
+    ],
+    "expected_behavior": [
+      "ASR adapter accepts Wyoming audio events and forwards a temporary WAV to ax_asr_api's OpenAI-style transcription endpoint.",
+      "TTS adapter accepts Wyoming synthesis events and streams WAV audio returned by ax_tts_api as Wyoming audio events.",
+      "Compose exposes the same user-facing Home Assistant ports as the RK3576 stack.",
+      "README documents AX650 setup, Home Assistant integration, model placement, and validation commands."
+    ],
+    "constraints_and_risks": [
+      "AX650 runtime services may require privileged Docker access and /dev bind mounts.",
+      "Exact ax_asr_api, ax_tts_api, and axllm package/runtime installation details may need later board validation.",
+      "Local validation uses adapter unit tests with fake HTTP services, not real AX650 inference."
+    ],
+    "acceptance_checks": [
+      "Project structure from plan.md exists.",
+      "docker compose config succeeds.",
+      "Adapter unit tests cover Wyoming-to-HTTP and HTTP-to-Wyoming event conversion.",
+      "README describes service ports and Home Assistant setup.",
+      "No model binaries are committed."
+    ],
+    "validation_approach": "Run python -m pytest -q and docker compose config locally; reserve AX650 board validation for a follow-up iteration.",
+    "first_iteration_scope": "Implement the AX650 project skeleton, Docker Compose services, ASR/TTS Wyoming HTTP adapters, local tests, download placeholders, and documentation.",
+    "likely_follow_up_iterations": [
+      "Validate and adjust Dockerfiles against real ax_asr_api, ax_tts_api, and axllm packaging on AX650.",
+      "Run board-side end-to-end checks with real models.",
+      "Add CI or image publishing if desired."
+    ],
+    "open_questions": []
+  },
+  "issues": [
+    {
+      "iteration": 1,
+      "number": 1,
+      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/1",
+      "title": "feat[1]: scaffold AX650 Home Assistant voice stack",
+      "acceptance_checks": [
+        "Project directories and compose services exist for asr, tts, llm, openwakeword, and optional Home Assistant.",
+        "ASR adapter converts Wyoming audio events into an OpenAI-style transcription HTTP request and returns Transcript.",
+        "TTS adapter converts Wyoming synthesis requests into OpenAI-style speech HTTP requests and streams returned WAV audio.",
+        "Unit tests verify ASR/TTS adapter event conversion using fake HTTP clients.",
+        "docker compose config succeeds.",
+        "README documents AX650 setup, ports, model placement, and Home Assistant integration."
+      ]
+    }
+  ],
+  "rounds": [
+    {
+      "iteration": 1,
+      "issue_number": 1,
+      "changed_files": [
+        ".build-state.json",
+        ".gitignore",
+        "README.md",
+        "asr/Dockerfile",
+        "asr/requirements.txt",
+        "asr/start.sh",
+        "asr/wyoming_adapter.py",
+        "docker-compose.yml",
+        "llm/Dockerfile",
+        "models/asr/.gitkeep",
+        "models/llm/.gitkeep",
+        "models/tts/.gitkeep",
+        "requirements-dev.txt",
+        "scripts/download_asr_models.sh",
+        "scripts/download_llm_models.sh",
+        "scripts/download_tts_models.sh",
+        "tests/test_asr_adapter.py",
+        "tests/test_tts_adapter.py",
+        "tts/Dockerfile",
+        "tts/requirements.txt",
+        "tts/start.sh",
+        "tts/wyoming_adapter.py"
+      ],
+      "implementation_summary": "Scaffolded the AX650 Docker Compose voice stack and implemented locally tested ASR/TTS Wyoming adapters that bridge to AXERA OpenAI-style HTTP APIs.",
+      "validation": [
+        {
+          "command": "python -m pytest -q",
+          "status": "passed",
+          "evidence": "6 passed, 1 warning"
+        },
+        {
+          "command": "docker compose config",
+          "status": "failed_environment",
+          "evidence": "docker: unknown command: docker compose"
+        },
+        {
+          "command": "docker-compose config",
+          "status": "passed",
+          "evidence": "Parsed services: asr, tts, openwakeword, llm, homeassistant profile"
+        }
+      ],
+      "test_status": "pass",
+      "test_command": "python -m pytest -q && docker-compose config",
+      "test_summary": "Passed locally: pytest reported 6 passed; docker-compose config parsed all services. The Docker Compose plugin command docker compose config is unavailable in this environment.",
+      "commit": "HEAD commit for iteration 1; final hash reported by git/PR",
+      "commit_message": "feat(iter-1): scaffold AX650 Home Assistant voice stack (#1)"
+    }
+  ],
+  "pre_existing_changes": [
+    "?? AGENTS.md",
+    "?? plan.md"
+  ],
+  "assumptions": [
+    "The target PR base branch is main.",
+    "GitHub CLI authentication is available for issues and PR creation.",
+    "The first iteration should be reviewable as a single commit.",
+    "plan.md and AGENTS.md predate this build-project run and will not be staged unless explicitly needed."
+  ],
+  "pull_request": {
+    "url": "https://github.com/ml-inory/ax650-home-assistant/pull/2",
+    "merged": false
+  }
+}
