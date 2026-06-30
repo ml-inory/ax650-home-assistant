@@ -106,6 +106,36 @@ def test_main_returns_nonzero_when_required_check_fails() -> None:
     assert smoke_check.main(["--host", "127.0.0.1", "--timeout", "0.01"]) == 1
 
 
+def test_public_only_skips_internal_asr_tts_http() -> None:
+    with http_server({"/v1/models": (200, {"object": "list"})}) as llm_server:
+        with tcp_server() as asr_tcp, tcp_server() as tts_tcp, tcp_server() as wakeword_tcp:
+            results = smoke_check.run_checks(
+                smoke_check.build_parser().parse_args(
+                    [
+                        "--host",
+                        "127.0.0.1",
+                        "--llm-port",
+                        str(llm_server.port),
+                        "--asr-wyoming-port",
+                        str(asr_tcp.port),
+                        "--tts-wyoming-port",
+                        str(tts_tcp.port),
+                        "--wakeword-port",
+                        str(wakeword_tcp.port),
+                        "--public-only",
+                    ]
+                )
+            )
+
+    assert all(result.ok for result in results)
+    assert {result.name for result in results} == {
+        "llm-http",
+        "asr-wyoming",
+        "tts-wyoming",
+        "wakeword-wyoming",
+    }
+
+
 def test_compose_builds_openwakeword_locally() -> None:
     result = subprocess.run(
         ["docker-compose", "config"],
@@ -116,3 +146,18 @@ def test_compose_builds_openwakeword_locally() -> None:
 
     assert "dockerfile: wakeword/Dockerfile" in result.stdout
     assert "rhasspy/wyoming-openwakeword" not in result.stdout
+
+
+def test_compose_builds_llm_from_release_binary() -> None:
+    result = subprocess.run(
+        ["docker-compose", "config"],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    assert "dockerfile: llm/Dockerfile" in result.stdout
+    assert "AX_LLM_RELEASE_URL" in result.stdout
+    assert "source: /soc" in result.stdout
+    assert "target: /soc" in result.stdout
+    assert "read_only: true" in result.stdout

@@ -3,7 +3,7 @@
   "stack": "Python adapters plus Docker Compose and AXERA C++ server wrappers",
   "base_branch": "main",
   "branch": "feat/build-20260630-board-validation",
-  "iteration": 6,
+  "iteration": 7,
   "validation_command": "python -m pytest -q && docker-compose config",
   "requirement_alignment": {
     "goal": "Continue after merged PR #5 until AX650 board validation succeeds or the next concrete runtime blocker is fixed and documented.",
@@ -97,7 +97,7 @@
       ]
     },
     {
-      "iteration": 6,
+  "iteration": 7,
       "number": 12,
       "url": "https://github.com/ml-inory/ax650-home-assistant/issues/12",
       "title": "fix[6]: pin wakeword runtime deps for AX650",
@@ -106,6 +106,20 @@
         "Local pytest and compose config pass.",
         "AX650 board openWakeWord container rebuilds and reaches healthy.",
         "ASR, TTS, and wakeword Wyoming TCP ports are reachable on the board."
+      ]
+    },
+    {
+      "iteration": 7,
+      "number": 14,
+      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/14",
+      "title": "fix[7]: validate LLM from AX release binary",
+      "acceptance_checks": [
+        "LLM Dockerfile uses mirrorable Debian base and apt mirrors.",
+        "LLM Dockerfile installs the AX650 axllm release binary from a local vendor cache with release URL fallback.",
+        "LLM service mounts /soc, exports MSP libraries, and fails fast when model assets are missing.",
+        "Local pytest and compose config pass.",
+        "AX650 board LLM container starts and responds on 8001 with /health, /v1/models, and a minimal chat completion.",
+        "AX650 board public smoke check passes for LLM HTTP plus ASR/TTS/wakeword Wyoming ports."
       ]
     }
   ],
@@ -346,7 +360,7 @@
         {
           "command": "python -m pytest -q",
           "status": "passed",
-          "evidence": "16 passed, 1 warning"
+          "evidence": "17 passed, 1 warning"
         },
         {
           "command": "docker-compose config",
@@ -382,7 +396,7 @@
         {
           "command": "python -m pytest -q",
           "status": "passed",
-          "evidence": "15 passed, 1 warning"
+          "evidence": "16 passed, 1 warning"
         },
         {
           "command": "docker-compose config",
@@ -408,8 +422,66 @@
       "test_status": "pass_with_remaining_llm",
       "test_command": "python -m pytest -q && docker-compose config; board openWakeWord rebuild and TCP health check",
       "test_summary": "Local validation passed and board openWakeWord is healthy with numpy<2. LLM real validation remains.",
-      "commit": "pending",
+      "commit": "b64cffd",
       "commit_message": "fix(iter-6): pin wakeword runtime deps for AX650 (#12)"
+    },
+    {
+      "iteration": 7,
+      "issue_number": 14,
+      "changed_files": [
+        ".build-state.json",
+        ".gitignore",
+        "README.md",
+        "docker-compose.yml",
+        "llm/Dockerfile",
+        "llm/start.sh",
+        "scripts/smoke_check.py",
+        "tests/test_smoke_check.py",
+        "vendor/axllm/.gitkeep"
+      ],
+      "implementation_summary": "Reworked the LLM image to use mirrorable Debian packages, install axllm from a local vendor cache with release URL fallback, mount /soc, and added public-only smoke checks for the externally exposed stack.",
+      "validation": [
+        {
+          "command": "python -m pytest -q",
+          "status": "passed",
+          "evidence": "16 passed, 1 warning"
+        },
+        {
+          "command": "docker-compose config",
+          "status": "passed",
+          "evidence": "Compose parsed successfully with LLM build args, /soc read-only mount, and public-only smoke check support."
+        },
+        {
+          "command": "board docker compose build llm",
+          "status": "passed",
+          "evidence": "LLM image built on AX650N 10.126.35.158 using the vendor/axllm/axllm-ax650-linux-arm64 cache; cache sha256 matches AXERA release asset."
+        },
+        {
+          "command": "board docker compose up -d llm && docker compose ps llm",
+          "status": "passed",
+          "evidence": "LLM container reached Up/healthy on port 8001 with Qwen3-0.6B model assets."
+        },
+        {
+          "command": "board curl -fsS http://127.0.0.1:8001/v1/models",
+          "status": "passed",
+          "evidence": "Returned model id AXERA-TECH/Qwen3-0.6B."
+        },
+        {
+          "command": "board curl -fsS -H 'Content-Type: application/json' -d '{...}' http://127.0.0.1:8001/v1/chat/completions",
+          "status": "passed",
+          "evidence": "Returned HTTP 200 chat.completion for model AXERA-TECH/Qwen3-0.6B."
+        },
+        {
+          "command": "board python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3 --public-only",
+          "status": "passed",
+          "evidence": "PASS llm-http, asr-wyoming, tts-wyoming, and wakeword-wyoming."
+        }
+      ],
+      "test_status": "pass",
+      "test_command": "python -m pytest -q && docker-compose config; board LLM real validation and public smoke check",
+      "test_summary": "Local validation passed and all board public service surfaces are healthy: LLM HTTP 8001 plus ASR/TTS/openWakeWord Wyoming ports.",
+      "commit": "pending",
+      "commit_message": "fix(iter-7): validate LLM from AX release binary (#14)"
     }
   ],
   "selected_board": {
@@ -426,6 +498,6 @@
     "Remote work was moved from /tmp to /root/ax650-home-assistant-board-validation because /tmp is tmpfs and filled during model download.",
     "AGENTS.md and plan.md are pre-existing local files and are not staged.",
     "Vendor source caches under vendor/ax_asr_api and vendor/ax_tts_api are local ignored build inputs; only .gitkeep placeholders are committed.",
-    "ASR real inference, TTS real speech generation, and openWakeWord Wyoming service are validated; LLM real service validation is still in progress."
+    "ASR real inference, TTS real speech generation, openWakeWord Wyoming service, and LLM Qwen3-0.6B OpenAI-compatible API are validated on the selected AX650 board."
   ]
 }

@@ -121,6 +121,9 @@ Startup fails fast if the upstream server binary or model path is missing. Overr
 | TTS | `AX_TTS_SERVER_PORT` | `8081` |
 | TTS | `AX_TTS_MODEL_PATH` | `/models/tts` |
 | TTS | `AX_TTS_ADAPTER_URI` | `tcp://0.0.0.0:10200` |
+| LLM | `AX_LLM_MODEL_DIR` | `/models/llm/Qwen3-0.6B` |
+| LLM | `AX_LLM_PORT` | `8001` |
+| LLM | `AX_LLM_RELEASE_URL` | `https://github.com/AXERA-TECH/ax-llm/releases/download/latest/axllm-ax650-linux-arm64` |
 
 For adapter-only debugging against an already running HTTP server, set `AX_ASR_ADAPTER_ONLY=1` or `AX_TTS_ADAPTER_ONLY=1` and point `AX_ASR_HTTP_URL` or `AX_TTS_HTTP_URL` at that server.
 

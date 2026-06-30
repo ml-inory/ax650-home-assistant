@@ -15,11 +15,14 @@ models/llm/*
 # Optional upstream source caches for board builds.
 vendor/ax_asr_api/*
 vendor/ax_tts_api/*
+vendor/axllm/*
 !vendor/.gitkeep
 !vendor/ax_asr_api/
 !vendor/ax_asr_api/.gitkeep
 !vendor/ax_tts_api/
 !vendor/ax_tts_api/.gitkeep
+!vendor/axllm/
+!vendor/axllm/.gitkeep
 
 # Optional Home Assistant runtime data.
 homeassistant/config/

@@ -114,16 +114,23 @@ services:
     build:
       context: .
       dockerfile: llm/Dockerfile
+      args:
+        BASE_IMAGE: ${DEBIAN_BASE_IMAGE:-docker.m.daocloud.io/library/debian:bookworm-slim}
+        APT_DEBIAN_MIRROR: ${APT_DEBIAN_MIRROR:-http://mirrors.ustc.edu.cn/debian}
+        APT_SECURITY_MIRROR: ${APT_SECURITY_MIRROR:-http://mirrors.ustc.edu.cn/debian-security}
+        AX_LLM_RELEASE_URL: ${AX_LLM_RELEASE_URL:-https://github.com/AXERA-TECH/ax-llm/releases/download/latest/axllm-ax650-linux-arm64}
     restart: unless-stopped
     privileged: true
     ports:
       - "8001:8001"
     volumes:
       - /dev:/dev
+      - /soc:/soc:ro
       - ./models/llm:/models/llm:ro
     environment:
       AX_LLM_MODEL_DIR: /models/llm/Qwen3-0.6B
       AX_LLM_PORT: "8001"
+      AX_LLM_SERVER_TIMEOUT_MS: "300000"
     healthcheck:
       test:
         - CMD-SHELL
