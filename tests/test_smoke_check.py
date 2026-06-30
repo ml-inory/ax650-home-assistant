@@ -5,6 +5,7 @@ import http.server
 import json
 import socket
 import socketserver
+import subprocess
 import threading
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -103,3 +104,15 @@ def test_check_tcp_reports_reachable_port() -> None:
 
 def test_main_returns_nonzero_when_required_check_fails() -> None:
     assert smoke_check.main(["--host", "127.0.0.1", "--timeout", "0.01"]) == 1
+
+
+def test_compose_builds_openwakeword_locally() -> None:
+    result = subprocess.run(
+        ["docker-compose", "config"],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    assert "dockerfile: wakeword/Dockerfile" in result.stdout
+    assert "rhasspy/wyoming-openwakeword" not in result.stdout

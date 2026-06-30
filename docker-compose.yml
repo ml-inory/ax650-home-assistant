@@ -83,15 +83,32 @@ services:
       start_period: 60s
 
   openwakeword:
-    image: rhasspy/wyoming-openwakeword
+    build:
+      context: .
+      dockerfile: wakeword/Dockerfile
+      args:
+        BASE_IMAGE: ${WAKEWORD_PYTHON_BASE_IMAGE:-docker.m.daocloud.io/library/python:3.10-slim-bookworm}
+        APT_DEBIAN_MIRROR: ${APT_DEBIAN_MIRROR:-http://mirrors.ustc.edu.cn/debian}
+        APT_SECURITY_MIRROR: ${APT_SECURITY_MIRROR:-http://mirrors.ustc.edu.cn/debian-security}
     restart: unless-stopped
     ports:
       - "10400:10400"
-    command:
-      - --uri
-      - tcp://0.0.0.0:10400
-      - --preload-model
-      - ok_nabu
+    environment:
+      WYOMING_OPENWAKEWORD_URI: tcp://0.0.0.0:10400
+      WYOMING_OPENWAKEWORD_MODEL: ok_nabu
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          python - <<'PY'
+          import socket
+          s = socket.create_connection(("127.0.0.1", 10400), 2)
+          s.close()
+          PY
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   llm:
     build:

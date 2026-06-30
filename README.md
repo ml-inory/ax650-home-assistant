@@ -6,7 +6,7 @@ This project mirrors the service layout from `rk3576-home-assistant-voice`, but 
 
 - Speech-to-text with AXERA `ax_asr_api`, wrapped as Wyoming on `10300`
 - Text-to-speech with AXERA `ax_tts_api`, wrapped as Wyoming on `10200`
-- Wake-word detection with `rhasspy/wyoming-openwakeword` on `10400`
+- Wake-word detection with `wyoming-openwakeword` on `10400`
 - Local conversation handling with AXERA `axllm`, OpenAI-compatible API on `8001`
 - Optional Home Assistant container profile
 
@@ -99,7 +99,7 @@ models/llm  -> /models/llm
 Defaults:
 
 - ASR: `sensevoice`, language `auto`
-- TTS: `kokoro`, language `zh`, voice `jm_kumo`
+- TTS: `kokoro`, language `zh`, voice `zf_xiaoxiao`
 - LLM: `AXERA-TECH/Qwen3-0.6B`, expected at `models/llm/Qwen3-0.6B`
 
 ## Runtime Contract

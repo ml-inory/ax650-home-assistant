@@ -3,7 +3,7 @@
   "stack": "Python adapters plus Docker Compose and AXERA C++ server wrappers",
   "base_branch": "main",
   "branch": "feat/build-20260630-board-validation",
-  "iteration": 4,
+  "iteration": 5,
   "validation_command": "python -m pytest -q && docker-compose config",
   "requirement_alignment": {
     "goal": "Continue after merged PR #5 until AX650 board validation succeeds or the next concrete runtime blocker is fixed and documented.",
@@ -81,6 +81,19 @@
         "Default Chinese TTS voice matches upstream server defaults/assets.",
         "Local pytest and compose config pass.",
         "AX650 board TTS real speech request returns a WAV file and Wyoming port becomes reachable."
+      ]
+    },
+    {
+      "iteration": 5,
+      "number": 11,
+      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/11",
+      "title": "fix[5]: build openWakeWord without Docker Hub image pull",
+      "acceptance_checks": [
+        "openWakeWord builds from local Dockerfile using the mirrorable Python base image.",
+        "The container installs wyoming-openwakeword from PyPI and preloads the built-in ok_nabu model.",
+        "Compose exposes and health-checks Wyoming TCP port 10400.",
+        "Local pytest and compose config pass.",
+        "AX650 board openWakeWord container reaches healthy and tcp://127.0.0.1:10400 is reachable."
       ]
     }
   ],
@@ -301,8 +314,49 @@
       "test_status": "pass_with_remaining_services",
       "test_command": "python -m pytest -q && docker-compose config; board TTS real speech and Wyoming TCP checks",
       "test_summary": "Local validation passed and board real TTS speech generation returned a WAV file; ASR/TTS Wyoming ports are reachable. Wakeword and LLM real validation remain.",
-      "commit": "pending",
+      "commit": "805976a",
       "commit_message": "fix(iter-4): complete TTS model assets and readiness (#10)"
+    },
+    {
+      "iteration": 5,
+      "issue_number": 11,
+      "changed_files": [
+        ".build-state.json",
+        "README.md",
+        "docker-compose.yml",
+        "tests/test_smoke_check.py",
+        "wakeword/Dockerfile",
+        "wakeword/requirements.txt",
+        "wakeword/start.sh"
+      ],
+      "implementation_summary": "Replaced the direct rhasspy/wyoming-openwakeword Docker Hub image pull with a local wakeword image build that installs wyoming-openwakeword from PyPI and preloads ok_nabu.",
+      "validation": [
+        {
+          "command": "python -m pytest -q",
+          "status": "passed",
+          "evidence": "15 passed, 1 warning"
+        },
+        {
+          "command": "docker-compose config",
+          "status": "passed",
+          "evidence": "Compose parsed successfully and openWakeWord uses wakeword/Dockerfile instead of rhasspy/wyoming-openwakeword."
+        },
+        {
+          "command": "board docker compose up -d --build openwakeword",
+          "status": "passed",
+          "evidence": "Built openWakeWord on AX650N 10.126.35.158 using DaoCloud Python base, USTC apt mirror, PyPI wyoming-openwakeword 1.8.2, tflite-runtime-nightly aarch64 wheel, and numpy aarch64 wheel."
+        },
+        {
+          "command": "board docker compose ps openwakeword; tcp connect 127.0.0.1:10400",
+          "status": "passed",
+          "evidence": "openWakeWord container reached Up/healthy and tcp://127.0.0.1:10400 was reachable."
+        }
+      ],
+      "test_status": "pass_with_remaining_llm",
+      "test_command": "python -m pytest -q && docker-compose config; board openWakeWord build and TCP health check",
+      "test_summary": "Local validation passed and board openWakeWord real container is healthy on Wyoming port 10400. LLM real validation remains.",
+      "commit": "pending",
+      "commit_message": "fix(iter-5): build openWakeWord without Docker Hub image pull (#11)"
     }
   ],
   "selected_board": {
@@ -319,6 +373,6 @@
     "Remote work was moved from /tmp to /root/ax650-home-assistant-board-validation because /tmp is tmpfs and filled during model download.",
     "AGENTS.md and plan.md are pre-existing local files and are not staged.",
     "Vendor source caches under vendor/ax_asr_api and vendor/ax_tts_api are local ignored build inputs; only .gitkeep placeholders are committed.",
-    "ASR real inference and TTS real speech generation are validated; wakeword and LLM real service validation are still in progress."
+    "ASR real inference, TTS real speech generation, and openWakeWord Wyoming service are validated; LLM real service validation is still in progress."
   ]
 }
