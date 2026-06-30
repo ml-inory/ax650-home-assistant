@@ -3,7 +3,7 @@
   "stack": "Python adapters plus Docker Compose and AXERA C++ server wrappers",
   "base_branch": "main",
   "branch": "feat/build-20260630-board-validation",
-  "iteration": 5,
+  "iteration": 6,
   "validation_command": "python -m pytest -q && docker-compose config",
   "requirement_alignment": {
     "goal": "Continue after merged PR #5 until AX650 board validation succeeds or the next concrete runtime blocker is fixed and documented.",
@@ -94,6 +94,18 @@
         "Compose exposes and health-checks Wyoming TCP port 10400.",
         "Local pytest and compose config pass.",
         "AX650 board openWakeWord container reaches healthy and tcp://127.0.0.1:10400 is reachable."
+      ]
+    },
+    {
+      "iteration": 6,
+      "number": 12,
+      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/12",
+      "title": "fix[6]: pin wakeword runtime deps for AX650",
+      "acceptance_checks": [
+        "openWakeWord pins numpy below 2 for tflite-runtime 2.14 compatibility.",
+        "Local pytest and compose config pass.",
+        "AX650 board openWakeWord container rebuilds and reaches healthy.",
+        "ASR, TTS, and wakeword Wyoming TCP ports are reachable on the board."
       ]
     }
   ],
@@ -334,7 +346,7 @@
         {
           "command": "python -m pytest -q",
           "status": "passed",
-          "evidence": "15 passed, 1 warning"
+          "evidence": "16 passed, 1 warning"
         },
         {
           "command": "docker-compose config",
@@ -344,7 +356,7 @@
         {
           "command": "board docker compose up -d --build openwakeword",
           "status": "passed",
-          "evidence": "Built openWakeWord on AX650N 10.126.35.158 using DaoCloud Python base, USTC apt mirror, PyPI wyoming-openwakeword 1.8.2, tflite-runtime-nightly aarch64 wheel, and numpy aarch64 wheel."
+          "evidence": "Built openWakeWord on AX650N 10.126.35.158 using DaoCloud Python base, USTC apt mirror, and PyPI packages. A follow-up pin is required because tflite-runtime 2.14 is not compatible with numpy 2.x."
         },
         {
           "command": "board docker compose ps openwakeword; tcp connect 127.0.0.1:10400",
@@ -355,8 +367,49 @@
       "test_status": "pass_with_remaining_llm",
       "test_command": "python -m pytest -q && docker-compose config; board openWakeWord build and TCP health check",
       "test_summary": "Local validation passed and board openWakeWord real container is healthy on Wyoming port 10400. LLM real validation remains.",
-      "commit": "pending",
+      "commit": "e8a7ada",
       "commit_message": "fix(iter-5): build openWakeWord without Docker Hub image pull (#11)"
+    },
+    {
+      "iteration": 6,
+      "issue_number": 12,
+      "changed_files": [
+        ".build-state.json",
+        "wakeword/requirements.txt"
+      ],
+      "implementation_summary": "Pinned wakeword numpy to <2 so tflite-runtime 2.14 can load its native extension on AX650/aarch64.",
+      "validation": [
+        {
+          "command": "python -m pytest -q",
+          "status": "passed",
+          "evidence": "15 passed, 1 warning"
+        },
+        {
+          "command": "docker-compose config",
+          "status": "passed",
+          "evidence": "Compose parsed successfully."
+        },
+        {
+          "command": "board docker compose rm -sf openwakeword && docker compose up -d --build openwakeword",
+          "status": "passed",
+          "evidence": "Rebuilt openWakeWord on AX650N 10.126.35.158 with numpy 1.26.4, tflite-runtime 2.14.0, and wyoming-openwakeword 1.8.2."
+        },
+        {
+          "command": "board docker compose ps asr tts openwakeword",
+          "status": "passed",
+          "evidence": "ASR, TTS, and openWakeWord containers are Up/healthy on Wyoming ports 10300, 10200, and 10400."
+        },
+        {
+          "command": "board python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3 --llm-port 65535",
+          "status": "partial_expected_failure",
+          "evidence": "PASS for ASR, TTS, and wakeword Wyoming TCP ports; HTTP host checks and LLM remain outside this wakeword fix."
+        }
+      ],
+      "test_status": "pass_with_remaining_llm",
+      "test_command": "python -m pytest -q && docker-compose config; board openWakeWord rebuild and TCP health check",
+      "test_summary": "Local validation passed and board openWakeWord is healthy with numpy<2. LLM real validation remains.",
+      "commit": "pending",
+      "commit_message": "fix(iter-6): pin wakeword runtime deps for AX650 (#12)"
     }
   ],
   "selected_board": {
