@@ -1,0 +1,21 @@
+# Home Assistant Configuration for AX650 Voice Stack
+# ===================================================
+
+default_config:
+
+tts:
+  - platform: google_translate
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+# Wyoming Protocol - auto-discovers AX650 ASR (10300), TTS (10200),
+# and Wake Word (10400) services on the host network.
+wyoming:
+
+# Note: After first HA startup, configure via UI:
+#   1. Settings → Devices & Services → Add Integration
+#   2. Add "OpenAI Conversation" → api_key: sk-local, base_url: http://127.0.0.1:8001/v1
+#   3. Add "Xiaomi Miot Auto" → log in with Xiaomi account
+#   4. Settings → Voice Assistants → create Assist Pipeline with AX650 services

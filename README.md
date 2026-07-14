@@ -120,6 +120,72 @@ python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3 --public-only
 | openWakeWord | Wyoming wake-word detection | `10400` |
 | LLM | OpenAI 兼容 `axllm serve` API | `8001` |
 
+
+
+> **国内网络提示**：如果 ghcr.io 拉取镜像失败，Docker Hub 上有相同镜像可通过 DaoCloud 加速：
+> ```bash
+> docker pull docker.m.daocloud.io/homeassistant/home-assistant:stable
+> docker tag docker.m.daocloud.io/homeassistant/home-assistant:stable ghcr.io/home-assistant/home-assistant:stable
+> ```
+
+## 小米智能家居接入
+
+本仓库的 Home Assistant profile 预置了 HACS 和 Xiaomi Miot Auto 集成，支持控制小米/米家设备。
+
+### 一键安装 HACS 和小米集成
+
+在板端执行：
+
+```bash
+bash scripts/setup_hacs_miot.sh
+```
+
+该脚本会将 HACS 和 Xiaomi Miot Auto 下载到 `homeassistant/config/custom_components/`。
+
+### 启动语音栈 + Home Assistant
+
+```bash
+docker compose --profile homeassistant up -d --build
+```
+
+### 配置 HA
+
+1. 浏览器打开 `http://AX650_BOARD_IP:8123`，完成 HA 初始化向导。
+2. HACS 和 Xiaomi Miot Auto 已预装到 `custom_components/`，无需额外安装。
+
+### 接入小米设备
+
+1. HA UI：**设置 → 设备与服务 → 添加集成**，搜索 `Xiaomi Miot Auto`。
+2. 选择 **Login to Mi Account**（扫码或手机号登录）。
+3. 登录成功后，所有米家设备自动出现在 HA 中。
+
+### 配置语音助手
+
+1. **设置 → 设备与服务 → 添加集成**，搜索 `OpenAI Conversation`。
+2. 填入：`api_key: sk-local`，`base_url: http://127.0.0.1:8001/v1`。
+3. **设置 → 语音助手**，创建 Assist Pipeline，将 STT/TTS/唤醒词/对话代理指向 AX650 服务。
+
+### 已支持的设备类型（Miot Auto）
+
+- 灯具、开关、插座
+- 空调、风扇、加湿器、空气净化器
+- 扫地机器人、窗帘电机
+- 传感器（温湿度、门窗、人体）
+- 网关及 Zigbee 子设备
+
+详细设备兼容列表见 [Xiaomi Miot Auto 文档](https://github.com/al-one/hass-xiaomi-miot)。
+
+### 语音控制示例
+
+语音栈和 HA 对接后，可自然语言控制小米设备：
+
+```
+"打开客厅的灯"
+"把卧室空调调到 26 度"
+"开始扫地"
+"关闭所有窗帘"
+```
+
 ## Home Assistant 配置
 
 在 Home Assistant 中添加 Wyoming 集成：
