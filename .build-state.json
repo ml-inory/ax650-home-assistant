@@ -3,7 +3,7 @@
   "stack": "Python adapters + Docker Compose + Home Assistant YAML config",
   "base_branch": "main",
   "branch": "feat/build-20260714-1605",
-  "iteration": 1,
+  "iteration": 2,
   "validation_command": "python -m pytest -q && docker-compose config && sh -n scripts/install_on_board.sh",
   "requirement_alignment": {
     "goal": "After `--with-homeassistant` profile starts, HA should auto-connect to AX650 voice stack (Wyoming STT/TTS/wakeword + OpenAI conversation) and have Xiaomi Miot Auto pre-installed for Xiaomi device control.",
@@ -53,6 +53,19 @@
         "Assist Pipeline config references AX650 services",
         "All existing tests pass (pytest, compose config, shell syntax)"
       ]
+    },
+    {
+      "iteration": 2,
+      "number": 18,
+      "url": "https://github.com/ml-inory/ax650-home-assistant/issues/18",
+      "title": "feat[2]: pre-install HACS and Xiaomi Miot Auto for Xiaomi device control",
+      "acceptance_checks": [
+        "Script scripts/setup_hacs_miot.sh downloads HACS into custom_components/hacs/",
+        "Script downloads Xiaomi Miot Auto into custom_components/xiaomi_miot/",
+        "configuration.yaml includes HACS integration config",
+        "README.md updated with Xiaomi setup instructions",
+        "All existing tests pass"
+      ]
     }
   ],
   "rounds": [
@@ -91,6 +104,36 @@
       "test_status": "pass",
       "test_command": "python3 -m pytest -q tests/test_install_on_board.py && sh -n scripts/install_on_board.sh && git diff --check",
       "test_summary": "All applicable tests pass. docker-compose not available on dev machine; compose config validation deferred to board-side smoke check."
+    },
+    {
+      "iteration": 2,
+      "issue_number": 18,
+      "changed_files": [
+        "scripts/setup_hacs_miot.sh",
+        "homeassistant/config/configuration.yaml",
+        "README.md"
+      ],
+      "implementation_summary": "Created setup_hacs_miot.sh to pre-download HACS and Xiaomi Miot Auto, added HACS config to configuration.yaml, and added Xiaomi smart home setup section to README.md.",
+      "validation": [
+        {
+          "command": "sh -n scripts/setup_hacs_miot.sh",
+          "status": "passed",
+          "evidence": "Shell syntax ok."
+        },
+        {
+          "command": "python3 -m pytest -q tests/test_install_on_board.py",
+          "status": "passed",
+          "evidence": "3 passed."
+        },
+        {
+          "command": "bash scripts/setup_hacs_miot.sh --dry-run",
+          "status": "passed",
+          "evidence": "Dry-run printed expected clone commands without side effects."
+        }
+      ],
+      "test_status": "pass",
+      "test_command": "sh -n scripts/setup_hacs_miot.sh && python3 -m pytest -q tests/test_install_on_board.py && bash scripts/setup_hacs_miot.sh --dry-run",
+      "test_summary": "All checks pass: shell syntax, pytest (3/3), dry-run produces expected output."
     }
   ],
   "pre_existing_changes": [],
@@ -101,5 +144,10 @@
     "HA version is latest stable (ghcr.io/home-assistant/home-assistant:stable).",
     "Chinese README remains the primary documentation."
   ],
-  "status": "in_progress"
+  "status": "in_progress",
+  "gate_decision": {
+    "iteration": 1,
+    "result": "continue",
+    "rationale": "Iteration 1 (voice stack auto-connect) passes all checks. Goal also requires Xiaomi Miot Auto pre-installation \u2192 continue to iteration 2."
+  }
 }

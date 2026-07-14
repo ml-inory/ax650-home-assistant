@@ -11,6 +11,13 @@
 default_config:
 
 # Text to speech
+
+# HACS (Home Assistant Community Store)
+# Pre-installed via scripts/setup_hacs_miot.sh
+# After first HA start, complete HACS setup in HA UI.
+hacs:
+  token: ""
+
 tts:
   - platform: google_translate
 
