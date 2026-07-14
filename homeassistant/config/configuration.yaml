@@ -1,22 +1,7 @@
 # Home Assistant Configuration for AX650 Voice Stack
 # ===================================================
-# This config auto-connects HA to AX650 board voice services
-# when started via: docker compose --profile homeassistant up -d
-#
-# Voice services (ASR/TTS/Wake Word) are discovered automatically
-# via the Wyoming protocol on 127.0.0.1 (host network mode).
-# The AX650 LLM is configured as the OpenAI Conversation agent.
 
-# Loads default set of integrations. Do not remove.
 default_config:
-
-# Text to speech
-
-# HACS (Home Assistant Community Store)
-# Pre-installed via scripts/setup_hacs_miot.sh
-# After first HA start, complete HACS setup in HA UI.
-hacs:
-  token: ""
 
 tts:
   - platform: google_translate
@@ -25,18 +10,12 @@ automation: !include automations.yaml
 script: !include scripts.yaml
 scene: !include scenes.yaml
 
-# -----------------------------------------------------------
-# Wyoming Protocol Integration
-# Auto-discovers AX650 ASR (port 10300), TTS (port 10200),
-# and Wake Word (port 10400) services on the host network.
-# -----------------------------------------------------------
+# Wyoming Protocol - auto-discovers AX650 ASR (10300), TTS (10200),
+# and Wake Word (10400) services on the host network.
 wyoming:
 
-# -----------------------------------------------------------
-# OpenAI Conversation Agent
-# Uses the AX650 local LLM (Qwen3-0.6B) running on port 8001
-# as the conversation engine for voice assistant responses.
-# -----------------------------------------------------------
-openai_conversation:
-  api_key: sk-local
-  base_url: http://127.0.0.1:8001/v1
+# Note: After first HA startup, configure via UI:
+#   1. Settings → Devices & Services → Add Integration
+#   2. Add "OpenAI Conversation" → api_key: sk-local, base_url: http://127.0.0.1:8001/v1
+#   3. Add "Xiaomi Miot Auto" → log in with Xiaomi account
+#   4. Settings → Voice Assistants → create Assist Pipeline with AX650 services

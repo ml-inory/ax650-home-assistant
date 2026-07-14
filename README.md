@@ -121,6 +121,13 @@ python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3 --public-only
 | LLM | OpenAI 兼容 `axllm serve` API | `8001` |
 
 
+
+> **国内网络提示**：如果 ghcr.io 拉取镜像失败，Docker Hub 上有相同镜像可通过 DaoCloud 加速：
+> ```bash
+> docker pull docker.m.daocloud.io/homeassistant/home-assistant:stable
+> docker tag docker.m.daocloud.io/homeassistant/home-assistant:stable ghcr.io/home-assistant/home-assistant:stable
+> ```
+
 ## 小米智能家居接入
 
 本仓库的 Home Assistant profile 预置了 HACS 和 Xiaomi Miot Auto 集成，支持控制小米/米家设备。
@@ -141,13 +148,22 @@ bash scripts/setup_hacs_miot.sh
 docker compose --profile homeassistant up -d --build
 ```
 
-### 配置小米设备
+### 配置 HA
 
 1. 浏览器打开 `http://AX650_BOARD_IP:8123`，完成 HA 初始化向导。
-2. 在 HA UI：**设置 → 设备与服务 → 添加集成**，搜索 `Xiaomi Miot Auto`。
-3. 选择账号集成方式，推荐 **Login to Mi Account**（扫码或手机号登录）。
-4. 登录成功后，所有米家设备会自动出现在 HA 中。
-5. 在 **设置 → 语音助手 → Assist Pipeline** 中，将语音管道各环节指向 AX650 服务。
+2. HACS 和 Xiaomi Miot Auto 已预装到 `custom_components/`，无需额外安装。
+
+### 接入小米设备
+
+1. HA UI：**设置 → 设备与服务 → 添加集成**，搜索 `Xiaomi Miot Auto`。
+2. 选择 **Login to Mi Account**（扫码或手机号登录）。
+3. 登录成功后，所有米家设备自动出现在 HA 中。
+
+### 配置语音助手
+
+1. **设置 → 设备与服务 → 添加集成**，搜索 `OpenAI Conversation`。
+2. 填入：`api_key: sk-local`，`base_url: http://127.0.0.1:8001/v1`。
+3. **设置 → 语音助手**，创建 Assist Pipeline，将 STT/TTS/唤醒词/对话代理指向 AX650 服务。
 
 ### 已支持的设备类型（Miot Auto）
 
