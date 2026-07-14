@@ -25,4 +25,8 @@ vendor/axllm/*
 !vendor/axllm/.gitkeep
 
 # Optional Home Assistant runtime data.
-homeassistant/config/
+# Home Assistant config: track only YAML config files
+homeassistant/config/*
+!homeassistant/config/*.yaml
+!homeassistant/config/*.yml
+!homeassistant/config/custom_components/
