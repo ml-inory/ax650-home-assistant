@@ -144,10 +144,11 @@
     "HA version is latest stable (ghcr.io/home-assistant/home-assistant:stable).",
     "Chinese README remains the primary documentation."
   ],
-  "status": "in_progress",
+  "status": "pr_created",
   "gate_decision": {
-    "iteration": 1,
-    "result": "continue",
-    "rationale": "Iteration 1 (voice stack auto-connect) passes all checks. Goal also requires Xiaomi Miot Auto pre-installation \u2192 continue to iteration 2."
-  }
+    "iteration": 2,
+    "result": "done",
+    "rationale": "Both iterations complete: AX650 voice stack auto-connect + Xiaomi Miot Auto pre-installation. All tests pass."
+  },
+  "pull_request": "https://github.com/ml-inory/ax650-home-assistant/pull/19"
 }
