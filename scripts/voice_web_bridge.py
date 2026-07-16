@@ -666,7 +666,7 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
 
 
 async def handle_index(request: web.Request) -> web.Response:
-    return web.Response(text=HTML_PAGE, content_type="text/html; charset=utf-8")
+    return web.Response(text=HTML_PAGE, content_type="text/html", charset="utf-8")
 
 
 async def handle_health(request: web.Request) -> web.Response:
