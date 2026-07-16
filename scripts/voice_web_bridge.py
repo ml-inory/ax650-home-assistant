@@ -414,22 +414,21 @@ function stopRecordingUI() {
 }
 
 async function toggleRecord() {
-  if (isRecording) {
-    if (recognition) { recognition.stop(); recognitionActive = false; }
+  if (isRecording) return;
+  if (!recognition) recognition = initRecognition();
+  if (!recognition) return;
+  try {
+    recognitionActive = true;
+    isRecording = true;
+    document.getElementById('record-btn').classList.add('listening');
+    document.getElementById('record-label').textContent = '正在听...';
+    document.getElementById('record-icon').textContent = '🔴';
+    recognition.start();
+  } catch (e) {
+    isRecording = false;
+    recognitionActive = false;
     stopRecordingUI();
-  } else {
-    if (!recognition) recognition = initRecognition();
-    if (!recognition) return;
-    try {
-      recognition.start();
-      recognitionActive = true;
-      isRecording = true;
-      document.getElementById('record-btn').classList.add('listening');
-      document.getElementById('record-label').textContent = '正在听...';
-      document.getElementById('record-icon').textContent = '🔴';
-    } catch (e) {
-      addMsg('system', '启动语音失败: ' + e.message);
-    }
+    addMsg('system', '启动语音失败: ' + e.message);
   }
 }
 
@@ -458,12 +457,12 @@ function playAudio(base64Data) {
 }
 
 // Mouse events for hold-to-record
-document.getElementById('record-btn').addEventListener('mousedown', toggleRecord);
-document.getElementById('record-btn').addEventListener('mouseup', stopRecording);
+document.getElementById('record-btn').addEventListener('mousedown', (e) => { e.preventDefault(); toggleRecord(); });
+document.getElementById('record-btn').addEventListener('mouseup', (e) => { e.preventDefault(); stopRecording(); });
 document.getElementById('record-btn').addEventListener('mouseleave', () => { if(isRecording) stopRecording(); });
 // Touch events for mobile
 document.getElementById('record-btn').addEventListener('touchstart', (e) => { e.preventDefault(); toggleRecord(); });
-document.getElementById('record-btn').addEventListener('touchend', stopRecording);
+document.getElementById('record-btn').addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
 
 connect();
 </script>
