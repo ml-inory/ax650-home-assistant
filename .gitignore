@@ -30,3 +30,5 @@ homeassistant/config/*
 !homeassistant/config/*.yaml
 !homeassistant/config/*.yml
 !homeassistant/config/custom_components/
+HA_token.txt
+hacs.zip

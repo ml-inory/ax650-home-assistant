@@ -128,19 +128,105 @@ python3 scripts/smoke_check.py --host 127.0.0.1 --timeout 3 --public-only
 > docker tag docker.m.daocloud.io/homeassistant/home-assistant:stable ghcr.io/home-assistant/home-assistant:stable
 > ```
 
+## 语音 Web 桥接 (Voice Web Bridge)
+
+`scripts/voice_web_bridge.py` 是一个独立的 Python 服务，通过 Web 页面实现 PC 麦克风 → AX650 AI → 语音控制设备的完整闭环。
+
+### 功能
+
+- **浏览器语音输入**：PC/手机浏览器录音，转发到 AX650 ASR/LLM/TTS 处理
+- **文字输入**：支持直接输入文字指令
+- **设备控制面板**：实时显示 HA 设备列表，点击按钮直接控制
+- **小米设备接入**：支持局域网扫描、云端登录、手动 Token 输入三种方式
+- **LLM 意图理解**：AX650 端侧 Qwen3-0.6B 大模型理解自然语言并执行设备操作
+- **Edge TTS 语音播报**：使用 Microsoft 免费 TTS，无需额外部署
+
+### 部署
+
+板端依赖：Python 3 + `aiohttp`
+
+```bash
+pip3 install aiohttp
+
+# 生成 HTTPS 自签名证书（浏览器语音需要 HTTPS）
+openssl req -x509 -newkey rsa:2048 -keyout /tmp/key.pem -out /tmp/cert.pem -days 365 -nodes -subj "/CN=ax650"
+
+# 启动桥接服务
+nohup python3 -u scripts/voice_web_bridge.py \
+  --port 8080 \
+  --ha-url http://127.0.0.1:8123/api \
+  --ha-token YOUR_HA_LONG_LIVED_TOKEN \
+  --ssl-cert /tmp/cert.pem --ssl-key /tmp/key.pem \
+  > /tmp/bridge.log 2>&1 &
+```
+
+### HA Token 获取
+
+HA 页面 → 点击左下角用户名 → **安全** → 最下方 **长期访问令牌** → 创建令牌。
+
+### 使用
+
+浏览器打开 `https://AX650_IP:8080/`（接受自签名证书警告）：
+
+| 功能 | 操作 |
+|------|------|
+| 🎤 语音输入 | Chrome 浏览器按住"按住说话"按钮 |
+| ⌨️ 文字输入 | 输入框打字回车 |
+| 📟 设备控制 | 底部设备栏点击按钮开关设备 |
+| 🔑 小米接入 | 展开面板 → 扫描局域网 / 云端登录 / 手动输入 Token |
+| 🔄 刷新设备 | 点击顶部 🔄 按钮或 30 秒自动刷新 |
+
+### 支持的语音指令
+
+| 指令示例 | 效果 |
+|----------|------|
+| "打开/关闭 客厅灯" | 开关灯 |
+| "打开/关闭 电视" | 开关电视（button.press） |
+| "电视大声点/小声点" | 电视音量± |
+| "风扇调到最大/最小" | 风扇风速 100%/1% |
+| "风扇调到 50%" | 风扇指定百分比 |
+| "风扇直吹风/自然风" | 风扇模式切换 |
+| "风扇摇头" | 风扇摆风 |
+
+LLM 也会根据系统提示自动理解更自然的表达并输出设备控制指令。
+
+### HA 代理配置（解决 GitHub 被墙）
+
+如果板子无法访问 GitHub（HACS/集成下载失败），在启动 HA 容器时配置代理：
+
+```bash
+docker run -d --name homeassistant --restart unless-stopped \
+  --privileged --network host \
+  -e http_proxy=http://YOUR_PROXY:7890 \
+  -e https_proxy=http://YOUR_PROXY:7890 \
+  -v /root/homeassistant/config:/config \
+  ghcr.io/home-assistant/home-assistant:stable
+```
+
 ## 小米智能家居接入
 
 本仓库的 Home Assistant profile 预置了 HACS 和 Xiaomi Miot Auto 集成，支持控制小米/米家设备。
 
-### 一键安装 HACS 和小米集成
+### 安装 HACS 和小米集成
 
-在板端执行：
+HACS：
 
 ```bash
+# 方法1：使用安装脚本
 bash scripts/setup_hacs_miot.sh
+
+# 方法2：手动下载（如 GitHub 被墙）
+# 在 PC 下载 https://github.com/hacs/integration/releases/latest/download/hacs.zip
+# 上传到板子后解压到 homeassistant/config/custom_components/hacs/
+unzip hacs.zip -d /root/homeassistant/config/custom_components/hacs/
+docker restart homeassistant
 ```
 
-该脚本会将 HACS 和 Xiaomi Miot Auto 下载到 `homeassistant/config/custom_components/`。
+Xiaomi Home 集成（推荐，替代 Miot Auto）：
+
+1. HA → 设置 → 设备与服务 → 添加集成 → 搜索 "Xiaomi Home"
+2. 扫码登录小米账号，自动发现所有米家设备
+3. 支持电视、风扇、灯、空调等设备完整控制
 
 ### 启动语音栈 + Home Assistant
 
