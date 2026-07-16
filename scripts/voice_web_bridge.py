@@ -345,7 +345,7 @@ function connect() {
       if (data.command) addMsg('system', '📟 ' + data.command);
       if (data.devices) { deviceList = data.devices; renderDevices(); }
     } else if (data.type === 'audio') {
-      playAudio(data.data);
+      playAudio(data.data, data.format || 'wav');
     } else if (data.type === 'error') {
       addMsg('system', '❌ ' + data.text);
     }
@@ -450,9 +450,10 @@ function sendText() {
   input.value = '';
 }
 
-function playAudio(base64Data) {
+function playAudio(base64Data, format) {
   document.getElementById('spinner').style.display = 'none';
-  const audio = new Audio('data:audio/wav;base64,' + base64Data);
+  const mime = format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
+  const audio = new Audio('data:' + mime + ';base64,' + base64Data);
   audio.play().catch(e => console.log('Playback error:', e));
 }
 
@@ -606,10 +607,29 @@ class VoiceBridge:
         return text, response, audio
 
     async def process_text(self, user_text: str) -> tuple[str, bytes | None]:
-        """Text → LLM → TTS."""
+        """Text → LLM → edge-tts."""
         response = await self.llm_chat(user_text)
-        audio = await wyoming_synthesize(self.tts_host, self.tts_port, response)
+        audio = await self._edge_tts(response)
         return response, audio
+
+    async def _edge_tts(self, text: str, voice: str = "zh-CN-XiaoxiaoNeural") -> bytes | None:
+        """Use Microsoft Edge TTS (free, no API key needed)."""
+        if not text.strip():
+            return None
+        try:
+            import edge_tts, tempfile, asyncio
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+                tmp_path = f.name
+            communicate = edge_tts.Communicate(text, voice)
+            await communicate.save(tmp_path)
+            with open(tmp_path, "rb") as f:
+                data = f.read()
+            import os
+            os.unlink(tmp_path)
+            return data
+        except Exception as e:
+            _LOGGER.warning("edge-tts error: %s", e)
+            return None
 
 
 # ---------------------------------------------------------------------------
@@ -661,7 +681,7 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
 
             if audio_bytes:
                 import base64
-                await ws.send_json({"type": "audio", "data": base64.b64encode(audio_bytes).decode()})
+                await ws.send_json({"type": "audio", "data": base64.b64encode(audio_bytes).decode(), "format": "mp3"})
 
         elif msg_type == "audio":
             # Audio path: browser sends PCM/WAV for Wyoming ASR
