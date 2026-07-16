@@ -22,6 +22,7 @@ import wave
 from pathlib import Path
 
 import aiohttp
+import ssl
 from aiohttp import web
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
@@ -709,6 +710,8 @@ def main():
     parser.add_argument("--llm-url", default="http://127.0.0.1:8001/v1")
     parser.add_argument("--ha-url", default="http://127.0.0.1:8123/api")
     parser.add_argument("--ha-token", default="")
+    parser.add_argument("--ssl-cert", default="", help="SSL certificate PEM file for HTTPS")
+    parser.add_argument("--ssl-key", default="", help="SSL private key PEM file for HTTPS")
     args = parser.parse_args()
 
     bridge = VoiceBridge(
@@ -734,7 +737,13 @@ def main():
     _LOGGER.info("  LLM: %s", args.llm_url)
     _LOGGER.info("  HA:  %s", args.ha_url)
 
-    web.run_app(app, host=args.host, port=args.port, print=lambda *a, **k: None)
+    ssl_context = None
+    if args.ssl_cert and args.ssl_key:
+        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ssl_context.load_cert_chain(args.ssl_cert, args.ssl_key)
+        _LOGGER.info("HTTPS enabled with cert=%s", args.ssl_cert)
+
+    web.run_app(app, host=args.host, port=args.port, ssl_context=ssl_context, print=lambda *a, **k: None)
 
 
 if __name__ == "__main__":
