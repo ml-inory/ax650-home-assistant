@@ -528,7 +528,7 @@ class VoiceBridge:
         for entity in result:
             eid = entity.get("entity_id", "")
             # filter common device types
-            if any(eid.startswith(p) for p in ("light.", "switch.", "fan.", "climate.", "cover.")):
+            if any(eid.startswith(p) for p in ("light.", "switch.", "fan.", "climate.", "cover.", "input_boolean.")):
                 state = entity.get("state", "unknown")
                 attrs = entity.get("attributes", {})
                 devices.append({
@@ -552,13 +552,8 @@ class VoiceBridge:
     async def llm_chat(self, user_text: str) -> str:
         """Send text to AX650 LLM and get response."""
         system_prompt = (
-            "你是一个智能家居语音助手，运行在 AX650 芯片上。"
-            "你的任务是理解用户的自然语言指令，协助控制智能家居设备。"
-            "回答要简洁、自然，像和朋友说话一样。"
-            "如果用户表达了设备控制意图（如开灯、关灯、调温度等），"
-            "请在回复末尾用一行 [ACTION:domain.service|entity_id] 标明操作。"
-            "例如：用户说'打开客厅灯' → 你回复'好的，马上打开客厅灯' "
-            "然后 [ACTION:light.turn_on|light.ke_ting_deng]"
+            "你是一个智能家居语音助手。回答要简洁自然，像一个朋友在说话。"
+            "每次回复不超过两句话。"
         )
         try:
             async with aiohttp.ClientSession() as session:
@@ -659,22 +654,47 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
             # LLM → TTS
             response, audio_bytes = await bridge.process_text(user_text)
 
-            # Parse ACTION
-            display_text = response
+            # Device control: keyword match user input against HA devices
             command_info = ""
+            try:
+                devices = await bridge.get_devices()
+                user_lower = user_text.lower()
+                for d in devices:
+                    name = d.get("name", "").lower()
+                    eid = d["entity_id"]
+                    domain = d["domain"]
+                    # Check if user mentioned this device
+                    if name and name in user_lower:
+                        if any(w in user_lower for w in ["打开", "开", "turn on", "open"]):
+                            await bridge.call_service(domain, "turn_on", eid)
+                            command_info = "已打开 " + d["name"]
+                        elif any(w in user_lower for w in ["关闭", "关", "turn off", "close"]):
+                            await bridge.call_service(domain, "turn_off", eid)
+                            command_info = "已关闭 " + d["name"]
+                        elif any(w in user_lower for w in ["toggle", "切换"]):
+                            await bridge.call_service(domain, "toggle", eid)
+                            command_info = "已切换 " + d["name"]
+                        break
+            except Exception as _e:
+                import traceback
+                traceback.print_exc()
+
+            # Check for ACTION tags from LLM too (backup)
+            display_text = response
             for line in response.split("\n"):
                 if line.strip().startswith("[ACTION:"):
-                    action_str = line.strip()[8:-1]  # extract: domain.service|entity_id
+                    action_str = line.strip()[8:-1]
                     display_text = response.replace(line, "").strip()
                     parts = action_str.split("|")
                     if len(parts) == 2:
                         service_path, entity_id = parts
-                        domain, service = service_path.rsplit(".", 1) if "." in service_path else (service_path, "")
-                        command_info = f"执行: {service_path} → {entity_id}"
-                        try:
-                            await bridge.call_service(domain, service, entity_id)
-                        except Exception as e:
-                            command_info += f" (失败: {e})"
+                        if "." in service_path:
+                            domain, service = service_path.rsplit(".", 1)
+                            try:
+                                await bridge.call_service(domain, service, entity_id)
+                                command_info = f"执行: {service_path} → {entity_id}"
+                            except Exception:
+                                pass
                     break
 
             await ws.send_json({"type": "text", "text": display_text, "command": command_info})
