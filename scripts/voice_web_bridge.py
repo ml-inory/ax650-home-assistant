@@ -538,7 +538,7 @@ class VoiceBridge:
         for entity in result:
             eid = entity.get("entity_id", "")
             # filter common device types
-            if any(eid.startswith(p) for p in ("light.", "switch.", "fan.", "climate.", "cover.", "input_boolean.")):
+            if any(eid.startswith(p) for p in ("light.", "switch.", "fan.", "climate.", "cover.", "input_boolean.", "media_player.", "vacuum.", "humidifier.", "camera.", "lock.")):
                 state = entity.get("state", "unknown")
                 attrs = entity.get("attributes", {})
                 devices.append({
