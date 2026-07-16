@@ -307,7 +307,7 @@ input[type=text]:focus{outline:none;border-color:#00d4aa}
 </div>
 
 <script>
-const WS_URL = `ws://${location.hostname}:${location.port}/ws`;
+const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.hostname + ":" + location.port + "/ws";
 let ws = null;
 let isRecording = false;
 let mediaRecorder = null;
