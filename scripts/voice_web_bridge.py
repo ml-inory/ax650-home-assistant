@@ -280,6 +280,9 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid rgb
 input[type=text]:focus{outline:none;border-color:#00d4aa}
 .spinner{display:none;width:20px;height:20px;border:2px solid #333;
   border-top-color:#00d4aa;border-radius:50%;animation:spin 0.8s linear infinite}
+.btn-refresh{background:none;border:none;font-size:1.2em;cursor:pointer;padding:2px 6px;
+  margin-left:auto;border-radius:6px;transition:all 0.2s}
+.btn-refresh:hover{background:rgba(0,212,170,0.2)}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
@@ -292,6 +295,8 @@ input[type=text]:focus{outline:none;border-color:#00d4aa}
     <div class="dot" id="status-dot"></div>
     <span class="status-text" id="status-text">连接中...</span>
     <div class="spinner" id="spinner"></div>
+    <button class="btn-refresh" onclick="loadDevices()" title="刷新设备列表">🔄</button>
+    <span style="font-size:0.75em;color:#666" id="device-count"></span>
   </div>
 
   <div id="chat-box"></div>
@@ -357,6 +362,7 @@ function loadDevices() {
 }
 
 function renderDevices() {
+  document.getElementById('device-count').textContent = deviceList.length + ' 个设备';
   const bar = document.getElementById('devices-bar');
   bar.innerHTML = '<span style="font-size:0.8em;color:#888">设备:</span>';
   for (const d of deviceList) {
@@ -476,6 +482,7 @@ document.getElementById('record-btn').addEventListener('touchstart', (e) => { e.
 document.getElementById('record-btn').addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
 
 connect();
+setInterval(loadDevices, 30000);
 </script>
 </body>
 </html>"""
