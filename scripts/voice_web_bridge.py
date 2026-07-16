@@ -413,10 +413,21 @@ function stopRecordingUI() {
   document.getElementById('record-icon').textContent = '🎤';
 }
 
+// Debounce guard
+let toggleLock = false;
+
 async function toggleRecord() {
-  if (isRecording) return;
-  if (!recognition) recognition = initRecognition();
-  if (!recognition) return;
+  if (toggleLock) return;
+  toggleLock = true;
+
+  // Always create fresh recognition (avoids 'already started' error)
+  if (recognition) {
+    try { recognition.abort(); } catch(e) {}
+    recognition = null;
+  }
+  recognition = initRecognition();
+  if (!recognition) { toggleLock = false; return; }
+
   try {
     recognitionActive = true;
     isRecording = true;
@@ -428,8 +439,9 @@ async function toggleRecord() {
     isRecording = false;
     recognitionActive = false;
     stopRecordingUI();
-    addMsg('system', '启动语音失败: ' + e.message);
+    addMsg('system', '语音启动失败: ' + e.message);
   }
+  toggleLock = false;
 }
 
 function stopRecording() {
