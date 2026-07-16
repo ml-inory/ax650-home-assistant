@@ -420,13 +420,11 @@ async function toggleRecord() {
   if (toggleLock) return;
   toggleLock = true;
 
-  // Always create fresh recognition (avoids 'already started' error)
-  if (recognition) {
-    try { recognition.abort(); } catch(e) {}
-    recognition = null;
-  }
-  recognition = initRecognition();
+  if (!recognition) recognition = initRecognition();
   if (!recognition) { toggleLock = false; return; }
+
+  // Abort any previous recognition to avoid 'already started' error
+  try { recognition.abort(); } catch(e) {}
 
   try {
     recognitionActive = true;
