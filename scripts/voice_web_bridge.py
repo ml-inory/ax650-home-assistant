@@ -371,49 +371,74 @@ function renderDevices() {
   }
 }
 
-// ---- Recording ----
+// ---- Recording via Web Speech API ----
+let recognition = null;
+let recognitionActive = false;
+
+function initRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    addMsg('system', '浏览器不支持语音识别，请使用 Chrome');
+    return null;
+  }
+  const rec = new SpeechRecognition();
+  rec.lang = 'zh-CN';
+  rec.interimResults = false;
+  rec.continuous = false;
+  rec.maxAlternatives = 1;
+  rec.onresult = (e) => {
+    const text = e.results[0][0].transcript.trim();
+    if (text) {
+      addMsg('user', text);
+      send({type: 'text', text: text});
+      document.getElementById('spinner').style.display = 'inline-block';
+    }
+    stopRecordingUI();
+  };
+  rec.onerror = (e) => {
+    addMsg('system', '识别失败: ' + e.error);
+    stopRecordingUI();
+  };
+  rec.onend = () => {
+    stopRecordingUI();
+  };
+  return rec;
+}
+
+function stopRecordingUI() {
+  isRecording = false;
+  recognitionActive = false;
+  document.getElementById('record-btn').classList.remove('listening');
+  document.getElementById('record-label').textContent = '按住说话';
+  document.getElementById('record-icon').textContent = '🎤';
+}
+
 async function toggleRecord() {
   if (isRecording) {
-    stopRecording();
+    if (recognition) { recognition.stop(); recognitionActive = false; }
+    stopRecordingUI();
   } else {
+    if (!recognition) recognition = initRecognition();
+    if (!recognition) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({audio: {sampleRate: 16000, channelCount: 1}});
-      mediaRecorder = new MediaRecorder(stream, {mimeType: 'audio/webm;codecs=opus'});
-      audioChunks = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunks.push(e.data);
-      };
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        if (audioChunks.length === 0) return;
-        const blob = new Blob(audioChunks, {type: 'audio/webm'});
-        const arrayBuffer = await blob.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-        send({type: 'audio', data: base64, format: 'webm', rate: 16000, channels: 1});
-        addMsg('user', '[语音输入]');
-        document.getElementById('spinner').style.display = 'inline-block';
-      };
-
-      mediaRecorder.start(250);
+      recognition.start();
+      recognitionActive = true;
       isRecording = true;
       document.getElementById('record-btn').classList.add('listening');
-      document.getElementById('record-label').textContent = '松开停止';
+      document.getElementById('record-label').textContent = '正在听...';
       document.getElementById('record-icon').textContent = '🔴';
     } catch (e) {
-      addMsg('system', '麦克风权限未授权: ' + e.message);
+      addMsg('system', '启动语音失败: ' + e.message);
     }
   }
 }
 
 function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
+  if (isRecording && recognition && recognitionActive) {
+    recognition.stop();
+    recognitionActive = false;
   }
-  isRecording = false;
-  document.getElementById('record-btn').classList.remove('listening');
-  document.getElementById('record-label').textContent = '按住说话';
-  document.getElementById('record-icon').textContent = '🎤';
+  stopRecordingUI();
 }
 
 function sendText() {
@@ -640,9 +665,9 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
                 await ws.send_json({"type": "audio", "data": base64.b64encode(audio_bytes).decode()})
 
         elif msg_type == "audio":
-            # Browser sends webm - we'd need ffmpeg to convert to PCM
-            # For simplicity, tell browser to use text mode or handle differently
-            await ws.send_json({"type": "text", "text": "语音识别需要先启动 AX650 语音栈 (ASR/TTS)。请使用文字输入。"})
+            # Audio path: browser sends PCM/WAV for Wyoming ASR
+            # Requires voice stack (ASR on 10300) to be running
+            await ws.send_json({"type": "error", "text": "ASR 服务未启动。请使用浏览器语音识别（Chrome 自带），或按提示启动语音栈。"})
 
         elif msg_type == "get_devices":
             devices = await bridge.get_devices()
